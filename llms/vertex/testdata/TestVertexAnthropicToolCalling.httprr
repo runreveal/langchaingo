@@ -1,0 +1,28 @@
+httprr trace v1
+695 707
+POST https://us-east5-aiplatform.googleapis.com/v1/projects/redacted-project/locations/us-east5/publishers/anthropic/models/claude-sonnet-4-5:rawPredict HTTP/1.1
+Host: us-east5-aiplatform.googleapis.com
+User-Agent: langchaingo-httprr
+Content-Length: 404
+Content-Type: application/json
+
+{"anthropic_version":"vertex-2023-10-16","max_tokens":256,"messages":[{"role":"user","content":[{"type":"text","text":"What's the weather in New York?"}]}],"tools":[{"name":"get_weather","description":"Get the current weather for a location","input_schema":{"properties":{"location":{"description":"The city and state, e.g. San Francisco, CA","type":"string"}},"required":["location"],"type":"object"}}]}HTTP/2.0 429 Too Many Requests
+Content-Length: 347
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+Content-Type: application/json; charset=UTF-8
+Date: Tue, 28 Apr 2026 19:21:28 GMT
+Server: scaffolding on HTTPServer2
+Vary: Origin
+Vary: X-Origin
+Vary: Referer
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+X-Xss-Protection: 0
+
+{
+  "error": {
+    "code": 429,
+    "message": "Quota exceeded for aiplatform.googleapis.com/online_prediction_input_tokens_per_minute_per_base_model with base model: anthropic-claude-sonnet-4-5. Please submit a quota increase request. https://cloud.google.com/vertex-ai/docs/generative-ai/quotas-genai.",
+    "status": "RESOURCE_EXHAUSTED"
+  }
+}
