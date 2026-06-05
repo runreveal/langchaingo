@@ -47,8 +47,40 @@ type messagePayload struct {
 	// Extended thinking parameters (Claude 3.7+)
 	Thinking *ThinkingConfig `json:"thinking,omitempty"`
 
+	// Context management for automatic compaction (Claude 4+)
+	ContextManagement *ContextManagement `json:"context_management,omitempty"`
+
 	StreamingFunc          func(ctx context.Context, chunk []byte) error                      `json:"-"`
 	StreamingReasoningFunc func(ctx context.Context, reasoningChunk, chunk []byte) error `json:"-"`
+}
+
+// ContextManagement configures server-side context compaction.
+type ContextManagement struct {
+	Edits []ContextManagementEdit `json:"edits"`
+}
+
+// ContextManagementEdit defines a compaction strategy.
+type ContextManagementEdit struct {
+	Type                string                     `json:"type"`
+	Trigger             *ContextManagementTrigger  `json:"trigger,omitempty"`
+	Instructions        string                     `json:"instructions,omitempty"`
+	PauseAfterCompaction bool                      `json:"pause_after_compaction,omitempty"`
+}
+
+// ContextManagementTrigger defines when compaction should fire.
+type ContextManagementTrigger struct {
+	Type  string `json:"type"`
+	Value int    `json:"value"`
+}
+
+// CompactionContent represents a compaction summary block in the response.
+type CompactionContent struct {
+	Type    string `json:"type"`
+	Content string `json:"content"`
+}
+
+func (cc CompactionContent) GetType() string {
+	return cc.Type
 }
 
 // ThinkingConfig represents the thinking configuration for Claude 3.7+
@@ -191,6 +223,12 @@ func (m *MessageResponsePayload) UnmarshalJSON(data []byte) error {
 				return err
 			}
 			m.Content = append(m.Content, tc)
+		case "compaction":
+			cc := &CompactionContent{}
+			if err := json.Unmarshal(raw, cc); err != nil {
+				return err
+			}
+			m.Content = append(m.Content, cc)
 		default:
 			return fmt.Errorf("unknown content type: %s\n%v", typeStruct.Type, string(raw))
 		}
@@ -407,6 +445,10 @@ func handleContentBlockStartEvent(event map[string]interface{}, response Message
 			response.Content = append(response.Content, &ThinkingContent{
 				Type: eventType,
 			})
+		case "compaction":
+			response.Content = append(response.Content, &CompactionContent{
+				Type: eventType,
+			})
 		default:
 			return response, fmt.Errorf("%w: unknown content block type: %s", ErrInvalidDeltaField, eventType)
 		}
@@ -442,6 +484,8 @@ func handleContentBlockDeltaEvent(ctx context.Context, event map[string]interfac
 		return handleJSONDelta(delta, response, index)
 	case "thinking_delta":
 		return handleThinkingDelta(ctx, delta, response, payload, index)
+	case "compaction_delta":
+		return handleCompactionDelta(delta, response, index)
 	}
 
 	return response, nil
@@ -507,6 +551,21 @@ func handleThinkingDelta(ctx context.Context, delta map[string]interface{}, resp
 		}
 	}
 
+	return response, nil
+}
+
+// handleCompactionDelta processes compaction delta events. The entire summary
+// arrives in a single delta (no intermediate streaming).
+func handleCompactionDelta(delta map[string]interface{}, response MessageResponsePayload, index int) (MessageResponsePayload, error) {
+	content, ok := delta["content"].(string)
+	if !ok {
+		return response, fmt.Errorf("%w: missing content in compaction_delta", ErrInvalidDeltaField)
+	}
+	compactionContent, ok := response.Content[index].(*CompactionContent)
+	if !ok {
+		return response, fmt.Errorf("failed to cast to CompactionContent at index %d", index)
+	}
+	compactionContent.Content += content
 	return response, nil
 }
 

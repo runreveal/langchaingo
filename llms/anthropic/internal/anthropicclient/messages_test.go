@@ -69,6 +69,64 @@ func Test_parseStreamingMessageResponse_withInputJSONDeltas(t *testing.T) {
 	}, secondContent.Input, "Tool use input should match expected value")
 }
 
+const SSEDataWithCompaction = `event: message_start
+data: {"type":"message_start","message":{"id":"msg_compact_01","type":"message","role":"assistant","model":"claude-sonnet-4-6","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":180000,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":2}}        }
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"compaction","content":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"compaction_delta","content":"The user asked to list all detections. Two pages of seed detections were fetched."}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"compaction","stop_sequence":null},"usage":{"output_tokens":50}}
+
+event: message_stop
+data: {"type":"message_stop"}`
+
+func Test_parseStreamingMessageResponse_withCompaction(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	response := createSSEResponse(SSEDataWithCompaction)
+	payload := &messagePayload{}
+	result, err := parseStreamingMessageResponse(ctx, response, payload)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, "compaction", result.StopReason)
+	require.Len(t, result.Content, 1, "Content should contain one compaction block")
+
+	compaction, ok := result.Content[0].(*CompactionContent)
+	require.True(t, ok, "Content block should be CompactionContent")
+	require.Equal(t, "compaction", compaction.Type)
+	require.Equal(t, "The user asked to list all detections. Two pages of seed detections were fetched.", compaction.Content)
+}
+
+func Test_UnmarshalJSON_CompactionContent(t *testing.T) {
+	data := []byte(`{
+		"content": [{"type": "compaction", "content": "Summary of conversation."}],
+		"id": "msg_test",
+		"model": "claude-sonnet-4-6",
+		"role": "assistant",
+		"stop_reason": "compaction",
+		"stop_sequence": null,
+		"type": "message",
+		"usage": {"input_tokens": 150000, "output_tokens": 2000}
+	}`)
+
+	var resp MessageResponsePayload
+	err := resp.UnmarshalJSON(data)
+	require.NoError(t, err)
+	require.Equal(t, "compaction", resp.StopReason)
+	require.Len(t, resp.Content, 1)
+
+	compaction, ok := resp.Content[0].(*CompactionContent)
+	require.True(t, ok)
+	require.Equal(t, "Summary of conversation.", compaction.Content)
+}
+
 // createAnthropicSSEResponse creates an HTTP response containing a simulated
 // Anthropic API server-sent events (SSE) stream.
 func createSSEResponse(data string) *http.Response {

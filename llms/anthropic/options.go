@@ -109,3 +109,36 @@ func EphemeralCacheOneHour() *llms.CacheControl {
 		Duration: time.Hour,
 	}
 }
+
+// CompactionConfig configures Anthropic's server-side context compaction.
+type CompactionConfig struct {
+	// TriggerTokens is the input token threshold that triggers compaction.
+	// Default: 100000. Minimum: 50000.
+	TriggerTokens int
+	// Instructions is a custom summarization prompt. If empty, the API default is used.
+	Instructions string
+	// PauseAfterCompaction causes the API to return with stop_reason "compaction"
+	// instead of continuing, allowing the caller to preserve recent messages.
+	PauseAfterCompaction bool
+}
+
+// WithCompaction enables Anthropic's server-side context compaction.
+// When the conversation exceeds the trigger threshold, the API automatically
+// summarizes older messages and continues with the compacted context.
+//
+// Usage:
+//
+//	llm.GenerateContent(ctx, messages,
+//	    anthropic.WithCompaction(&anthropic.CompactionConfig{
+//	        TriggerTokens: 100000,
+//	        PauseAfterCompaction: true,
+//	    }),
+//	)
+func WithCompaction(config *CompactionConfig) llms.CallOption {
+	return func(opts *llms.CallOptions) {
+		if opts.Metadata == nil {
+			opts.Metadata = make(map[string]interface{})
+		}
+		opts.Metadata["anthropic:compaction"] = config
+	}
+}

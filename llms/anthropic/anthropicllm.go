@@ -145,6 +145,35 @@ func generateMessagesContent(ctx context.Context, o *LLM, messages []llms.Messag
 
 	betaHeaders, thinking := extractThinkingOptions(o, opts)
 
+	// Extract compaction configuration from metadata
+	var contextMgmt *anthropicclient.ContextManagement
+	if opts.Metadata != nil {
+		if cfg, ok := opts.Metadata["anthropic:compaction"].(*CompactionConfig); ok && cfg != nil {
+			triggerTokens := cfg.TriggerTokens
+			if triggerTokens == 0 {
+				triggerTokens = 100000
+			}
+			if triggerTokens < 50000 {
+				triggerTokens = 50000 // Anthropic API minimum
+			}
+			contextMgmt = &anthropicclient.ContextManagement{
+				Edits: []anthropicclient.ContextManagementEdit{
+					{
+						Type: "compact_20260112",
+						Trigger: &anthropicclient.ContextManagementTrigger{
+							Type:  "input_tokens",
+							Value: triggerTokens,
+						},
+						Instructions:         cfg.Instructions,
+						PauseAfterCompaction: cfg.PauseAfterCompaction,
+					},
+				},
+			}
+			// Add the compaction beta header
+			betaHeaders = append(betaHeaders, "compact-2026-01-12")
+		}
+	}
+
 	result, err := o.client.CreateMessage(ctx, &anthropicclient.MessageRequest{
 		Model:                  opts.Model,
 		Messages:               chatMessages,
@@ -155,6 +184,7 @@ func generateMessagesContent(ctx context.Context, o *LLM, messages []llms.Messag
 		TopP:                   opts.TopP,
 		Tools:                  tools,
 		Thinking:               thinking,
+		ContextManagement:      contextMgmt,
 		BetaHeaders:            betaHeaders,
 		StreamingFunc:          opts.StreamingFunc,
 		StreamingReasoningFunc: opts.StreamingReasoningFunc,
@@ -241,6 +271,22 @@ func processAnthropicResponse(result *anthropicclient.MessageResponsePayload) (*
 				}
 			} else {
 				return nil, fmt.Errorf("anthropic: %w for thinking message %T", ErrInvalidContentType, content)
+			}
+		case "compaction":
+			if compactionContent, ok := content.(*anthropicclient.CompactionContent); ok {
+				choices[i] = &llms.ContentChoice{
+					Content:    compactionContent.Content,
+					StopReason: result.StopReason,
+					GenerationInfo: map[string]any{
+						"CompactionSummary":        compactionContent.Content,
+						"InputTokens":              result.Usage.InputTokens,
+						"OutputTokens":             result.Usage.OutputTokens,
+						"CacheCreationInputTokens": result.Usage.CacheCreationInputTokens,
+						"CacheReadInputTokens":     result.Usage.CacheReadInputTokens,
+					},
+				}
+			} else {
+				return nil, fmt.Errorf("anthropic: %w for compaction message %T", ErrInvalidContentType, content)
 			}
 		default:
 			return nil, fmt.Errorf("anthropic: %w: %v", ErrUnsupportedContentType, content.GetType())
