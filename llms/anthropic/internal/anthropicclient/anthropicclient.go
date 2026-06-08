@@ -140,6 +140,9 @@ type MessageRequest struct {
 	// Extended thinking parameters (Claude 3.7+)
 	Thinking *ThinkingConfig `json:"thinking,omitempty"`
 
+	// Context management for automatic compaction (Claude 4+)
+	ContextManagement *ContextManagement `json:"context_management,omitempty"`
+
 	// BetaHeaders are additional beta feature headers to include
 	BetaHeaders            []string                                                      `json:"-"`
 	StreamingFunc          func(ctx context.Context, chunk []byte) error                `json:"-"`
@@ -159,6 +162,7 @@ func (c *Client) CreateMessage(ctx context.Context, r *MessageRequest) (*Message
 		Tools:                  r.Tools,
 		Stream:                 r.Stream,
 		Thinking:               r.Thinking,
+		ContextManagement:      r.ContextManagement,
 		StreamingFunc:          r.StreamingFunc,
 		StreamingReasoningFunc: r.StreamingReasoningFunc,
 	}, r.BetaHeaders)

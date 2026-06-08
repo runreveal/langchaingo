@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	anthropicclient "github.com/tmc/langchaingo/llms/anthropic/internal/anthropicclient"
 	"github.com/tmc/langchaingo/llms"
 )
 
@@ -217,6 +218,109 @@ func TestOptions(t *testing.T) {
 			t.Error("WithLegacyTextCompletionsAPI() did not set flag")
 		}
 	})
+}
+
+func TestEphemeralCacheOptions(t *testing.T) {
+	cache := EphemeralCache()
+	if cache.Type != "ephemeral" {
+		t.Errorf("EphemeralCache() type = %s, want ephemeral", cache.Type)
+	}
+
+	cacheOneHour := EphemeralCacheOneHour()
+	if cacheOneHour.Type != "ephemeral" {
+		t.Errorf("EphemeralCacheOneHour() type = %s, want ephemeral", cacheOneHour.Type)
+	}
+}
+
+func TestWithCompaction(t *testing.T) {
+	t.Run("default trigger", func(t *testing.T) {
+		cfg := &CompactionConfig{}
+		opt := WithCompaction(cfg)
+
+		var opts llms.CallOptions
+		opt(&opts)
+
+		if opts.Metadata == nil {
+			t.Fatal("metadata should be initialized")
+		}
+		stored, ok := opts.Metadata["anthropic:compaction"].(*CompactionConfig)
+		if !ok || stored == nil {
+			t.Fatal("compaction config should be stored in metadata")
+		}
+		if stored.TriggerTokens != 0 {
+			t.Errorf("TriggerTokens = %d, want 0 (default applied at request time)", stored.TriggerTokens)
+		}
+	})
+
+	t.Run("custom config", func(t *testing.T) {
+		cfg := &CompactionConfig{
+			TriggerTokens:        150000,
+			PauseAfterCompaction: true,
+			Instructions:         "custom summary instructions",
+		}
+		opt := WithCompaction(cfg)
+
+		var opts llms.CallOptions
+		opt(&opts)
+
+		stored := opts.Metadata["anthropic:compaction"].(*CompactionConfig)
+		if stored.TriggerTokens != 150000 {
+			t.Errorf("TriggerTokens = %d, want 150000", stored.TriggerTokens)
+		}
+		if !stored.PauseAfterCompaction {
+			t.Error("PauseAfterCompaction should be true")
+		}
+		if stored.Instructions != "custom summary instructions" {
+			t.Errorf("Instructions = %q, want custom", stored.Instructions)
+		}
+	})
+}
+
+func TestProcessAnthropicResponse_Compaction(t *testing.T) {
+	// Test via JSON unmarshal since anthropicclient is internal
+	jsonData := `{
+		"content": [{"type": "compaction", "content": "Summary of the conversation so far."}],
+		"id": "msg_test",
+		"model": "claude-sonnet-4-6",
+		"role": "assistant",
+		"stop_reason": "compaction",
+		"stop_sequence": null,
+		"type": "message",
+		"usage": {"input_tokens": 180000, "output_tokens": 3500}
+	}`
+
+	var result anthropicclient.MessageResponsePayload
+	err := result.UnmarshalJSON([]byte(jsonData))
+	if err != nil {
+		t.Fatalf("UnmarshalJSON() error = %v", err)
+	}
+
+	resp, err := processAnthropicResponse(&result)
+	if err != nil {
+		t.Fatalf("processAnthropicResponse() error = %v", err)
+	}
+
+	if len(resp.Choices) != 1 {
+		t.Fatalf("expected 1 choice, got %d", len(resp.Choices))
+	}
+
+	choice := resp.Choices[0]
+	if choice.StopReason != "compaction" {
+		t.Errorf("StopReason = %q, want compaction", choice.StopReason)
+	}
+	if choice.Content != "Summary of the conversation so far." {
+		t.Errorf("Content = %q, want summary text", choice.Content)
+	}
+
+	summary, ok := choice.GenerationInfo["CompactionSummary"].(string)
+	if !ok || summary != "Summary of the conversation so far." {
+		t.Errorf("CompactionSummary = %q, want summary text", summary)
+	}
+
+	inputTokens, ok := choice.GenerationInfo["InputTokens"].(int)
+	if !ok || inputTokens != 180000 {
+		t.Errorf("InputTokens = %v, want 180000", choice.GenerationInfo["InputTokens"])
+	}
 }
 
 func TestCall(t *testing.T) {
