@@ -40,7 +40,7 @@ type messagePayload struct {
 	MaxTokens   int           `json:"max_tokens,omitempty"`
 	StopWords   []string      `json:"stop_sequences,omitempty"`
 	Stream      bool          `json:"stream,omitempty"`
-	Temperature float64       `json:"temperature"`
+	Temperature float64       `json:"temperature,omitempty"`
 	Tools       []Tool        `json:"tools,omitempty"`
 	TopP        float64       `json:"top_p,omitempty"`
 
@@ -50,7 +50,7 @@ type messagePayload struct {
 	// Context management for automatic compaction (Claude 4+)
 	ContextManagement *ContextManagement `json:"context_management,omitempty"`
 
-	StreamingFunc          func(ctx context.Context, chunk []byte) error                      `json:"-"`
+	StreamingFunc          func(ctx context.Context, chunk []byte) error                 `json:"-"`
 	StreamingReasoningFunc func(ctx context.Context, reasoningChunk, chunk []byte) error `json:"-"`
 }
 
@@ -61,9 +61,9 @@ type ContextManagement struct {
 
 // ContextManagementEdit defines a compaction strategy.
 type ContextManagementEdit struct {
-	Type                string                     `json:"type"`
-	Trigger             *ContextManagementTrigger  `json:"trigger,omitempty"`
-	Instructions        string                     `json:"instructions,omitempty"`
+	Type                 string                    `json:"type"`
+	Trigger              *ContextManagementTrigger `json:"trigger,omitempty"`
+	Instructions         string                    `json:"instructions,omitempty"`
 	PauseAfterCompaction bool                      `json:"pause_after_compaction,omitempty"`
 }
 
