@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	anthropicclient "github.com/tmc/langchaingo/llms/anthropic/internal/anthropicclient"
 	"github.com/tmc/langchaingo/llms"
+	anthropicclient "github.com/tmc/langchaingo/llms/anthropic/internal/anthropicclient"
 )
 
 func TestNew(t *testing.T) {
@@ -138,6 +138,77 @@ func TestProcessMessages(t *testing.T) {
 				}
 				if systemPrompt != tt.wantSystem {
 					t.Errorf("processMessages() system prompt = %q, want %q", systemPrompt, tt.wantSystem)
+				}
+			}
+		})
+	}
+}
+
+func TestHandleAIMessage(t *testing.T) {
+	toolCall := llms.ToolCall{
+		ID:           "toolu_1",
+		FunctionCall: &llms.FunctionCall{Name: "get_weather", Arguments: `{"location":"SF"}`},
+	}
+
+	tests := []struct {
+		name      string
+		parts     []llms.ContentPart
+		wantTypes []string // expected content block types, in order
+		wantErr   bool
+	}{
+		{
+			name:      "text only",
+			parts:     []llms.ContentPart{llms.TextContent{Text: "hello"}},
+			wantTypes: []string{"text"},
+		},
+		{
+			name:      "tool call only",
+			parts:     []llms.ContentPart{toolCall},
+			wantTypes: []string{"tool_use"},
+		},
+		{
+			name:      "text followed by tool call",
+			parts:     []llms.ContentPart{llms.TextContent{Text: "let me check"}, toolCall},
+			wantTypes: []string{"text", "tool_use"},
+		},
+		{
+			name:      "empty text is skipped alongside tool call",
+			parts:     []llms.ContentPart{llms.TextContent{Text: ""}, toolCall},
+			wantTypes: []string{"tool_use"},
+		},
+		{
+			name:    "unsupported part type errors",
+			parts:   []llms.ContentPart{llms.ImageURLContent{URL: "http://example.com/x.png"}},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := llms.MessageContent{Role: llms.ChatMessageTypeAI, Parts: tt.parts}
+			got, err := handleAIMessage(msg)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("handleAIMessage() expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("handleAIMessage() unexpected error: %v", err)
+			}
+			if got.Role != RoleAssistant {
+				t.Errorf("role = %q, want %q", got.Role, RoleAssistant)
+			}
+			contents, ok := got.Content.([]anthropicclient.Content)
+			if !ok {
+				t.Fatalf("content is %T, want []anthropicclient.Content", got.Content)
+			}
+			if len(contents) != len(tt.wantTypes) {
+				t.Fatalf("got %d content blocks, want %d", len(contents), len(tt.wantTypes))
+			}
+			for i, want := range tt.wantTypes {
+				if got := contents[i].GetType(); got != want {
+					t.Errorf("content[%d] type = %q, want %q", i, got, want)
 				}
 			}
 		})

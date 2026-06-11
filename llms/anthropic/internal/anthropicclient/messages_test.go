@@ -2,12 +2,50 @@ package anthropicclient
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+// Claude Opus 4.7+ removed the sampling parameters and returns a 400 if
+// "temperature" is present in the payload. Callers that never set a temperature
+// leave it at the Go zero value, so the field must be omitted when unset rather
+// than serialized as "temperature": 0.
+func TestMessagePayload_TemperatureOmittedWhenZero(t *testing.T) {
+	t.Parallel()
+
+	payload := &messagePayload{
+		Model:    "claude-opus-4-8",
+		Messages: []ChatMessage{{Role: "user", Content: "hi"}},
+	}
+	data, err := json.Marshal(payload)
+	require.NoError(t, err)
+	require.NotContains(t, string(data), "temperature",
+		"temperature must be omitted when unset (Opus 4.7+ rejects it)")
+
+	payload.Temperature = 0.5
+	data, err = json.Marshal(payload)
+	require.NoError(t, err)
+	require.Contains(t, string(data), `"temperature":0.5`,
+		"a non-zero temperature must still be serialized")
+}
+
+func TestMessageRequest_TemperatureOmittedWhenZero(t *testing.T) {
+	t.Parallel()
+
+	req := &MessageRequest{
+		Model:    "claude-opus-4-8",
+		Messages: []ChatMessage{{Role: "user", Content: "hi"}},
+	}
+	data, err := json.Marshal(req)
+	require.NoError(t, err)
+	require.False(t, strings.Contains(string(data), "temperature"),
+		"temperature must be omitted when unset (Opus 4.7+ rejects it)")
+}
 
 func Test_parseStreamingMessageResponse_withEmptyInput(t *testing.T) {
 	t.Parallel()

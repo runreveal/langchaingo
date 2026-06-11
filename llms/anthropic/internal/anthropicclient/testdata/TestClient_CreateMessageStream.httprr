@@ -1,14 +1,14 @@
 httprr trace v1
-360 1759
+344 1759
 POST https://api.anthropic.com/v1/messages HTTP/1.1
 Host: api.anthropic.com
 User-Agent: langchaingo-httprr
-Content-Length: 140
+Content-Length: 124
 Anthropic-Version: 2023-06-01
 Content-Type: application/json
 X-Api-Key: test-api-key
 
-{"model":"claude-3-opus-20240229","messages":[{"role":"user","content":"Count from 1 to 5"}],"max_tokens":100,"stream":true,"temperature":0}HTTP/2.0 200 OK
+{"model":"claude-3-opus-20240229","messages":[{"role":"user","content":"Count from 1 to 5"}],"max_tokens":100,"stream":true}HTTP/2.0 200 OK
 Content-Length: 1345
 Anthropic-Organization-Id: 2277c511-5523-4a62-83bd-b847b0c4b121
 Cache-Control: no-cache
