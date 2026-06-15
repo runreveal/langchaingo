@@ -36,7 +36,7 @@ type ChatMessage struct {
 type messagePayload struct {
 	Model       string        `json:"model"`
 	Messages    []ChatMessage `json:"messages"`
-	System      string        `json:"system,omitempty"`
+	System      *SystemPrompt `json:"system,omitempty"`
 	MaxTokens   int           `json:"max_tokens,omitempty"`
 	StopWords   []string      `json:"stop_sequences,omitempty"`
 	Stream      bool          `json:"stream,omitempty"`
@@ -52,6 +52,22 @@ type messagePayload struct {
 
 	StreamingFunc          func(ctx context.Context, chunk []byte) error                 `json:"-"`
 	StreamingReasoningFunc func(ctx context.Context, reasoningChunk, chunk []byte) error `json:"-"`
+}
+
+// SystemPrompt is the Anthropic `system` field. It marshals as a bare string
+// normally, or as an array of text blocks when a cache_control breakpoint is
+// attached (the API accepts both forms). Use a nil *SystemPrompt to omit it; only
+// the caching path produces the array form, so existing requests are unchanged.
+type SystemPrompt struct {
+	Text   string
+	Blocks []TextContent
+}
+
+func (s SystemPrompt) MarshalJSON() ([]byte, error) {
+	if len(s.Blocks) > 0 {
+		return json.Marshal(s.Blocks)
+	}
+	return json.Marshal(s.Text)
 }
 
 // ContextManagement configures server-side context compaction.

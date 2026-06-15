@@ -310,59 +310,87 @@ func toolsToTools(tools []llms.Tool) []anthropicclient.Tool {
 	return toolReq
 }
 
-func processMessages(messages []llms.MessageContent) ([]anthropicclient.ChatMessage, string, error) {
+// processMessages converts the message slice into Anthropic chat messages plus a
+// system prompt. The system value is nil when there is no system content; otherwise
+// it carries the text and, when a cache breakpoint was attached to the system
+// message, the cache_control block (emitted as the array form on the wire).
+func processMessages(messages []llms.MessageContent) ([]anthropicclient.ChatMessage, *anthropicclient.SystemPrompt, error) {
 	chatMessages := make([]anthropicclient.ChatMessage, 0, len(messages))
-	systemPrompt := ""
+	var systemText strings.Builder
+	var systemBlocks []anthropicclient.TextContent
+	systemCached := false
 	for _, msg := range messages {
 		switch msg.Role {
 		case llms.ChatMessageTypeSystem:
-			content, err := handleSystemMessage(msg)
+			content, cacheControl, err := handleSystemMessage(msg)
 			if err != nil {
-				return nil, "", fmt.Errorf("anthropic: failed to handle system message: %w", err)
+				return nil, nil, fmt.Errorf("anthropic: failed to handle system message: %w", err)
 			}
-			systemPrompt += content
+			systemText.WriteString(content)
+			block := anthropicclient.TextContent{Type: "text", Text: content}
+			if cacheControl != nil {
+				block.CacheControl = cacheControl
+				systemCached = true
+			}
+			systemBlocks = append(systemBlocks, block)
 		case llms.ChatMessageTypeHuman:
 			chatMessage, err := handleHumanMessage(msg)
 			if err != nil {
-				return nil, "", fmt.Errorf("anthropic: failed to handle human message: %w", err)
+				return nil, nil, fmt.Errorf("anthropic: failed to handle human message: %w", err)
 			}
 			chatMessages = append(chatMessages, chatMessage)
 		case llms.ChatMessageTypeAI:
 			chatMessage, err := handleAIMessage(msg)
 			if err != nil {
-				return nil, "", fmt.Errorf("anthropic: failed to handle AI message: %w", err)
+				return nil, nil, fmt.Errorf("anthropic: failed to handle AI message: %w", err)
 			}
 			chatMessages = append(chatMessages, chatMessage)
 		case llms.ChatMessageTypeTool:
 			chatMessage, err := handleToolMessage(msg)
 			if err != nil {
-				return nil, "", fmt.Errorf("anthropic: failed to handle tool message: %w", err)
+				return nil, nil, fmt.Errorf("anthropic: failed to handle tool message: %w", err)
 			}
 			chatMessages = append(chatMessages, chatMessage)
 		case llms.ChatMessageTypeGeneric, llms.ChatMessageTypeFunction:
-			return nil, "", fmt.Errorf("anthropic: %w: %v", ErrUnsupportedMessageType, msg.Role)
+			return nil, nil, fmt.Errorf("anthropic: %w: %v", ErrUnsupportedMessageType, msg.Role)
 		default:
-			return nil, "", fmt.Errorf("anthropic: %w: %v", ErrUnsupportedMessageType, msg.Role)
+			return nil, nil, fmt.Errorf("anthropic: %w: %v", ErrUnsupportedMessageType, msg.Role)
 		}
 	}
-	return chatMessages, systemPrompt, nil
+
+	// Default to the plain-string form; only carry the block array (with
+	// cache_control) when a cache breakpoint is present, so the static prefix is
+	// served from cache on subsequent turns. nil omits the system field entirely.
+	var system *anthropicclient.SystemPrompt
+	switch {
+	case systemCached:
+		system = &anthropicclient.SystemPrompt{Blocks: systemBlocks}
+	case systemText.Len() > 0:
+		system = &anthropicclient.SystemPrompt{Text: systemText.String()}
+	}
+	return chatMessages, system, nil
 }
 
-func handleSystemMessage(msg llms.MessageContent) (string, error) {
+func handleSystemMessage(msg llms.MessageContent) (string, *anthropicclient.CacheControl, error) {
 	// Handle both direct TextContent and CachedContent wrapper
 	part := msg.Parts[0]
 
-	// If it's cached content, unwrap it
+	// If it's cached content, unwrap it and carry the cache control through so the
+	// system prompt can be emitted as a cache breakpoint.
+	var cacheControl *anthropicclient.CacheControl
 	if cached, ok := part.(llms.CachedContent); ok {
+		if cached.CacheControl != nil {
+			cacheControl = &anthropicclient.CacheControl{Type: cached.CacheControl.Type}
+		}
 		part = cached.ContentPart
 	}
 
 	// Extract text from the part
 	if textContent, ok := part.(llms.TextContent); ok {
-		return textContent.Text, nil
+		return textContent.Text, cacheControl, nil
 	}
 
-	return "", fmt.Errorf("anthropic: %w for system message", ErrInvalidContentType)
+	return "", nil, fmt.Errorf("anthropic: %w for system message", ErrInvalidContentType)
 }
 
 func handleHumanMessage(msg llms.MessageContent) (anthropicclient.ChatMessage, error) {
