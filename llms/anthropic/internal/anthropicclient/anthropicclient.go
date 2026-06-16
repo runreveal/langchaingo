@@ -129,7 +129,7 @@ func (c *Client) CreateCompletion(ctx context.Context, r *CompletionRequest) (*C
 type MessageRequest struct {
 	Model       string        `json:"model"`
 	Messages    []ChatMessage `json:"messages"`
-	System      string        `json:"system,omitempty"`
+	System      *SystemPrompt `json:"system,omitempty"`
 	Temperature float64       `json:"temperature,omitempty"`
 	MaxTokens   int           `json:"max_tokens,omitempty"`
 	TopP        float64       `json:"top_p,omitempty"`

@@ -2,6 +2,7 @@ package anthropic
 
 import (
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/tmc/langchaingo/llms"
@@ -66,7 +67,7 @@ func TestProcessMessages(t *testing.T) {
 		name       string
 		messages   []llms.MessageContent
 		wantLen    int
-		wantSystem string
+		wantSystem *anthropicclient.SystemPrompt
 		wantErr    bool
 	}{
 		{
@@ -80,7 +81,7 @@ func TestProcessMessages(t *testing.T) {
 				},
 			},
 			wantLen:    1,
-			wantSystem: "",
+			wantSystem: nil,
 			wantErr:    false,
 		},
 		{
@@ -100,7 +101,7 @@ func TestProcessMessages(t *testing.T) {
 				},
 			},
 			wantLen:    1,
-			wantSystem: "You are helpful",
+			wantSystem: &anthropicclient.SystemPrompt{Text: "You are helpful"},
 			wantErr:    false,
 		},
 		{
@@ -120,8 +121,37 @@ func TestProcessMessages(t *testing.T) {
 				},
 			},
 			wantLen:    2,
-			wantSystem: "",
+			wantSystem: nil,
 			wantErr:    false,
+		},
+		{
+			name: "cached system message becomes a cache_control block",
+			messages: []llms.MessageContent{
+				{
+					Role: llms.ChatMessageTypeSystem,
+					Parts: []llms.ContentPart{
+						llms.WithCacheControl(
+							llms.TextContent{Text: "You are helpful"},
+							&llms.CacheControl{Type: "ephemeral"},
+						),
+					},
+				},
+				{
+					Role:  llms.ChatMessageTypeHuman,
+					Parts: []llms.ContentPart{llms.TextContent{Text: "Hi"}},
+				},
+			},
+			wantLen: 1,
+			wantSystem: &anthropicclient.SystemPrompt{
+				Blocks: []anthropicclient.TextContent{
+					{
+						Type:         "text",
+						Text:         "You are helpful",
+						CacheControl: &anthropicclient.CacheControl{Type: "ephemeral"},
+					},
+				},
+			},
+			wantErr: false,
 		},
 	}
 
@@ -136,8 +166,8 @@ func TestProcessMessages(t *testing.T) {
 				if len(result) != tt.wantLen {
 					t.Errorf("processMessages() returned %d messages, want %d", len(result), tt.wantLen)
 				}
-				if systemPrompt != tt.wantSystem {
-					t.Errorf("processMessages() system prompt = %q, want %q", systemPrompt, tt.wantSystem)
+				if !reflect.DeepEqual(systemPrompt, tt.wantSystem) {
+					t.Errorf("processMessages() system prompt = %#v, want %#v", systemPrompt, tt.wantSystem)
 				}
 			}
 		})
