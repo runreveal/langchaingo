@@ -176,7 +176,7 @@ func createAnthropicCompletion(ctx context.Context,
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("vertex anthropic: status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, decodeAnthropicError(resp.StatusCode, body)
 	}
 
 	if streaming {
@@ -556,4 +556,33 @@ func parseAnthropicStream(ctx context.Context, body io.Reader, options llms.Call
 		choice.FuncCall = choice.ToolCalls[0].FunctionCall
 	}
 	return &llms.ContentResponse{Choices: []*llms.ContentChoice{choice}}, nil
+}
+
+// decodeAnthropicError builds a typed *llms.APIError from a non-200 Vertex
+// response. Vertex proxies Anthropic's error envelope, so the same error types
+// ("rate_limit_error", "overloaded_error") are available here; preserving them
+// lets callers classify a failure without matching on message text.
+func decodeAnthropicError(statusCode int, body []byte) error {
+	apiErr := &llms.APIError{Provider: "vertex", StatusCode: statusCode}
+
+	// Vertex returns either Anthropic's {"error": {...}} envelope or, for errors
+	// raised by the Vertex layer itself, a bare list of google.rpc statuses.
+	var envelope struct {
+		Error struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+			Status  string `json:"status"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &envelope); err == nil && envelope.Error.Message != "" {
+		apiErr.Type = envelope.Error.Type
+		if apiErr.Type == "" {
+			apiErr.Type = envelope.Error.Status
+		}
+		apiErr.Message = envelope.Error.Message
+		return apiErr
+	}
+
+	apiErr.Message = strings.TrimSpace(string(body))
+	return apiErr
 }

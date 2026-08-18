@@ -2,7 +2,6 @@ package vertex
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/tmc/langchaingo/llms"
 )
@@ -17,61 +16,61 @@ var ErrMissingLocation = errors.New("vertex: missing GCP location (use WithLocat
 // to a known Vertex publisher model family.
 var ErrUnsupportedPublisher = errors.New("vertex: unsupported publisher for model")
 
-type errorMapping struct {
-	patterns []string
-	code     llms.ErrorCode
-	message  string
+// vertexErrorMappings classifies errors that reach MapError without structure.
+//
+// Errors from the Vertex HTTP client are *llms.APIError and are classified from
+// their status code and Anthropic error type, so these patterns only cover what
+// arrives as plain text: transport failures and GCP auth problems raised before
+// the request is sent.
+//
+// Note the absence of bare status digits — see llms/errors_mapper.go for why.
+var vertexErrorMappings = []llms.PatternMapping{
+	{
+		Patterns: []string{
+			"could not find default credentials", "unauthenticated",
+			"permission_denied", "invalid authentication", "token expired",
+		},
+		Code:    llms.ErrCodeAuthentication,
+		Summary: "Invalid or missing GCP credentials",
+	},
+	{
+		Patterns: []string{"resource_exhausted", "rate limit", "too many requests", "quota exceeded"},
+		Code:     llms.ErrCodeRateLimit,
+		Summary:  "Rate limit exceeded",
+	},
+	{
+		Patterns: []string{"model not found", "was not found", "is not allowlisted"},
+		Code:     llms.ErrCodeResourceNotFound,
+		Summary:  "Model not found or not enabled for this project",
+	},
+	{
+		Patterns: []string{"prompt is too long", "maximum tokens", "context window", "request_too_large"},
+		Code:     llms.ErrCodeTokenLimit,
+		Summary:  "Token limit exceeded",
+	},
+	{
+		Patterns: []string{"blocked", "safety", "content filter"},
+		Code:     llms.ErrCodeContentFilter,
+		Summary:  "Content blocked by safety filter",
+	},
+	{
+		Patterns: []string{"billing", "insufficient"},
+		Code:     llms.ErrCodeQuotaExceeded,
+		Summary:  "GCP quota or billing limit reached",
+	},
+	{
+		Patterns: []string{"overloaded", "service unavailable", "unavailable"},
+		Code:     llms.ErrCodeProviderUnavailable,
+		Summary:  "Vertex AI service temporarily unavailable",
+	},
+	{
+		Patterns: []string{"invalid_argument", "invalid request"},
+		Code:     llms.ErrCodeInvalidRequest,
+		Summary:  "Invalid request",
+	},
 }
 
-var vertexErrorMappings = []errorMapping{
-	{
-		patterns: []string{"permission_denied", "permission denied", "unauthenticated", "invalid_grant", "access denied"},
-		code:     llms.ErrCodeAuthentication,
-		message:  "Invalid or missing GCP credentials",
-	},
-	{
-		patterns: []string{"resource_exhausted", "quota exceeded", "rate limit", "429"},
-		code:     llms.ErrCodeRateLimit,
-		message:  "Request rate limit or quota exceeded",
-	},
-	{
-		patterns: []string{"not_found", "model not found", "publisher model"},
-		code:     llms.ErrCodeResourceNotFound,
-		message:  "Model not found or not accessible",
-	},
-	{
-		patterns: []string{"invalid_argument", "malformed", "400"},
-		code:     llms.ErrCodeInvalidRequest,
-		message:  "Invalid request parameters",
-	},
-	{
-		patterns: []string{"deadline_exceeded", "timeout"},
-		code:     llms.ErrCodeTimeout,
-		message:  "Request timeout",
-	},
-	{
-		patterns: []string{"unavailable", "internal error", "500", "503"},
-		code:     llms.ErrCodeProviderUnavailable,
-		message:  "Vertex AI service error",
-	},
-}
-
-// MapError maps Vertex AI errors to standardized langchaingo error codes.
+// MapError maps Vertex AI-specific errors to standardized error codes.
 func MapError(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	errStr := strings.ToLower(err.Error())
-
-	for _, mapping := range vertexErrorMappings {
-		for _, pattern := range mapping.patterns {
-			if strings.Contains(errStr, pattern) {
-				return llms.NewError(mapping.code, "vertex", mapping.message).WithCause(err)
-			}
-		}
-	}
-
-	mapper := llms.NewErrorMapper("vertex")
-	return mapper.Map(err)
+	return llms.MapProviderError("vertex", err, vertexErrorMappings)
 }

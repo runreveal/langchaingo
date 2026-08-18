@@ -108,7 +108,9 @@ func (l *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 		if l.CallbacksHandler != nil {
 			l.CallbacksHandler.HandleLLMError(ctx, err)
 		}
-		return nil, err
+		// Classify before returning so callers can branch on llms.ErrorCode
+		// (retry a rate limit, fail fast on bad credentials) instead of matching text.
+		return nil, MapError(err)
 	}
 
 	if l.CallbacksHandler != nil {
