@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/tmc/langchaingo/httputil"
+	"github.com/tmc/langchaingo/llms"
 )
 
 const (
@@ -222,12 +223,18 @@ type errorMessage struct {
 	} `json:"error"`
 }
 
+// decodeError builds a typed *llms.APIError from a non-200 response, preserving
+// both the HTTP status and Anthropic's own error type ("rate_limit_error",
+// "overloaded_error", ...) so callers can classify the failure without matching
+// on message text.
 func (c *Client) decodeError(resp *http.Response) error {
-	msg := fmt.Sprintf("API returned unexpected status code: %d", resp.StatusCode)
+	apiErr := &llms.APIError{Provider: "anthropic", StatusCode: resp.StatusCode}
 
 	var errResp errorMessage
 	if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
-		return errors.New(msg)
+		return apiErr
 	}
-	return fmt.Errorf("%s: %s", msg, errResp.Error.Message)
+	apiErr.Type = errResp.Error.Type
+	apiErr.Message = errResp.Error.Message
+	return apiErr
 }

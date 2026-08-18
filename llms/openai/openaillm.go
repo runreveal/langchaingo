@@ -327,7 +327,9 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 
 	result, err := o.client.CreateChat(ctx, req)
 	if err != nil {
-		return nil, err
+		// Classify before returning so callers can branch on llms.ErrorCode
+		// (retry a rate limit, fail fast on a bad key) instead of matching text.
+		return nil, MapError(err)
 	}
 	if len(result.Choices) == 0 {
 		return nil, ErrEmptyResponse
