@@ -1,80 +1,63 @@
 package openai
 
 import (
-	"strings"
-
 	"github.com/tmc/langchaingo/llms"
 )
 
-// errorMapping represents a mapping from error patterns to error codes.
-type errorMapping struct {
-	patterns []string
-	code     llms.ErrorCode
-	message  string
-}
-
-// openaiErrorMappings defines the error mappings for OpenAI.
-var openaiErrorMappings = []errorMapping{
+// openaiErrorMappings classifies errors that reach MapError without structure.
+//
+// Errors from the OpenAI HTTP client are *llms.APIError and are classified from
+// their status code and error type, so these patterns only cover what arrives as
+// plain text — notably the generic messages sanitizeHTTPError substitutes for
+// transport failures.
+//
+// Note the absence of bare status digits ("401", "429", ...). Matching those
+// against message text misreads dated model ids ("gpt-4o-2024-05-13") and request
+// ids; status codes travel on *llms.APIError instead.
+var openaiErrorMappings = []llms.PatternMapping{
 	{
-		patterns: []string{"incorrect api key", "invalid api key", "api key not found"},
-		code:     llms.ErrCodeAuthentication,
-		message:  "Invalid or missing API key",
+		Patterns: []string{"invalid_api_key", "incorrect api key", "invalid authentication"},
+		Code:     llms.ErrCodeAuthentication,
+		Summary:  "Invalid or missing API key",
 	},
 	{
-		patterns: []string{"rate limit exceeded", "too many requests", "429"},
-		code:     llms.ErrCodeRateLimit,
-		message:  "Rate limit exceeded",
+		Patterns: []string{"rate limit", "too many requests"},
+		Code:     llms.ErrCodeRateLimit,
+		Summary:  "Rate limit exceeded",
 	},
 	{
-		patterns: []string{"model not found", "no such model"},
-		code:     llms.ErrCodeResourceNotFound,
-		message:  "Model not found",
+		Patterns: []string{"model_not_found", "does not exist"},
+		Code:     llms.ErrCodeResourceNotFound,
+		Summary:  "Model not found",
 	},
 	{
-		patterns: []string{"context length exceeded", "maximum context length"},
-		code:     llms.ErrCodeTokenLimit,
-		message:  "Context length exceeded",
+		Patterns: []string{"context_length_exceeded", "maximum context length", "reduce the length"},
+		Code:     llms.ErrCodeTokenLimit,
+		Summary:  "Token limit exceeded",
 	},
 	{
-		patterns: []string{"content filtering", "content policy violation"},
-		code:     llms.ErrCodeContentFilter,
-		message:  "Content filtered due to policy violation",
+		Patterns: []string{"content_filter", "content policy"},
+		Code:     llms.ErrCodeContentFilter,
+		Summary:  "Content blocked by content filter",
 	},
 	{
-		patterns: []string{"quota exceeded", "billing hard limit"},
-		code:     llms.ErrCodeQuotaExceeded,
-		message:  "API quota exceeded",
+		Patterns: []string{"insufficient_quota", "exceeded your current quota", "billing"},
+		Code:     llms.ErrCodeQuotaExceeded,
+		Summary:  "API quota exceeded",
 	},
 	{
-		patterns: []string{"invalid request", "400"},
-		code:     llms.ErrCodeInvalidRequest,
-		message:  "Invalid request",
+		Patterns: []string{"request timeout", "deadline"},
+		Code:     llms.ErrCodeTimeout,
+		Summary:  "Request timed out",
 	},
 	{
-		patterns: []string{"service unavailable", "503"},
-		code:     llms.ErrCodeProviderUnavailable,
-		message:  "OpenAI service temporarily unavailable",
+		Patterns: []string{"service unavailable", "server_error", "engine is currently overloaded"},
+		Code:     llms.ErrCodeProviderUnavailable,
+		Summary:  "OpenAI service temporarily unavailable",
 	},
 }
 
 // MapError maps OpenAI-specific errors to standardized error codes.
 func MapError(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	errStr := strings.ToLower(err.Error())
-
-	// Check each error mapping
-	for _, mapping := range openaiErrorMappings {
-		for _, pattern := range mapping.patterns {
-			if strings.Contains(errStr, pattern) {
-				return llms.NewError(mapping.code, "openai", mapping.message).WithCause(err)
-			}
-		}
-	}
-
-	// Use the generic error mapper for unrecognized errors
-	mapper := llms.NewErrorMapper("openai")
-	return mapper.Map(err)
+	return llms.MapProviderError("openai", err, openaiErrorMappings)
 }

@@ -122,7 +122,9 @@ func (g *GoogleAI) GenerateContent(
 		response, err = generateFromMessages(ctx, model, messages, &opts)
 	}
 	if err != nil {
-		return nil, err
+		// Classify before returning so callers can branch on llms.ErrorCode
+		// (retry a rate limit, fail fast on a bad key) instead of matching text.
+		return nil, MapError(err)
 	}
 
 	if g.CallbacksHandler != nil {

@@ -193,7 +193,9 @@ func generateMessagesContent(ctx context.Context, o *LLM, messages []llms.Messag
 		if o.CallbacksHandler != nil {
 			o.CallbacksHandler.HandleLLMError(ctx, err)
 		}
-		return nil, fmt.Errorf("anthropic: failed to create message: %w", err)
+		// Classify before returning so callers can branch on llms.ErrorCode
+		// (retry a rate limit, fail fast on a bad key) instead of matching text.
+		return nil, MapError(fmt.Errorf("anthropic: failed to create message: %w", err))
 	}
 	return processAnthropicResponse(result)
 }
