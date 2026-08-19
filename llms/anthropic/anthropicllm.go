@@ -198,9 +198,59 @@ func generateMessagesContent(ctx context.Context, o *LLM, messages []llms.Messag
 	return processAnthropicResponse(result)
 }
 
+// StopReasonRefusal is the stop_reason Anthropic returns when a safety guardrail
+// blocks a request. It matches the value surfaced on ContentChoice.StopReason.
+const StopReasonRefusal = "refusal"
+
+// defaultRefusalMessage is used when a refusal arrives without an explanation.
+const defaultRefusalMessage = "This request was blocked by the model's safety guardrails."
+
+// refusalChoice builds a ContentChoice from a blocked (empty-content) response.
+// It returns nil when the response is empty for some reason other than a refusal,
+// so the caller can fall back to ErrEmptyResponse.
+func refusalChoice(result *anthropicclient.MessageResponsePayload) *llms.ContentChoice {
+	isRefusal := result.StopReason == StopReasonRefusal ||
+		(result.StopDetails != nil && result.StopDetails.Type == StopReasonRefusal)
+	if !isRefusal {
+		return nil
+	}
+
+	message := defaultRefusalMessage
+	genInfo := map[string]any{
+		"InputTokens":  result.Usage.InputTokens,
+		"OutputTokens": result.Usage.OutputTokens,
+	}
+	if result.StopDetails != nil {
+		if result.StopDetails.Explanation != "" {
+			message = result.StopDetails.Explanation
+		}
+		genInfo["RefusalCategory"] = result.StopDetails.Category
+	}
+
+	return &llms.ContentChoice{
+		Content:        message,
+		StopReason:     StopReasonRefusal,
+		GenerationInfo: genInfo,
+	}
+}
+
 // processAnthropicResponse converts Anthropic API response to standard ContentResponse
 func processAnthropicResponse(result *anthropicclient.MessageResponsePayload) (*llms.ContentResponse, error) {
-	if result == nil || len(result.Content) == 0 {
+	if result == nil {
+		return nil, ErrEmptyResponse
+	}
+
+	// A safety guardrail (Opus 5 / Fable 5 and newer) blocks the request with an
+	// HTTP 200 whose content array is empty and stop_reason is "refusal", carrying
+	// the human-readable reason in stop_details. Surface it as a normal choice with
+	// the explanation as content: the caller sees why it was blocked, the StopReason
+	// lets it decide whether to fall back to another model, and — critically — the
+	// assistant turn is non-empty, so it does not later fail handleAIMessage when
+	// replayed as history ("no valid content in AI message").
+	if len(result.Content) == 0 {
+		if choice := refusalChoice(result); choice != nil {
+			return &llms.ContentResponse{Choices: []*llms.ContentChoice{choice}}, nil
+		}
 		return nil, ErrEmptyResponse
 	}
 
@@ -488,7 +538,15 @@ func handleAIMessage(msg llms.MessageContent) (anthropicclient.ChatMessage, erro
 	}
 
 	if len(contents) == 0 {
-		return anthropicclient.ChatMessage{}, fmt.Errorf("anthropic: no valid content in AI message")
+		// An assistant turn with no usable content reaches here when a prior
+		// generation was blocked by a guardrail (empty content, stop_reason
+		// "refusal") and persisted to history. The API rejects empty text blocks,
+		// so substitute a placeholder rather than failing the whole request — one
+		// blocked turn must not make the entire conversation unreplayable.
+		contents = append(contents, &anthropicclient.TextContent{
+			Type: "text",
+			Text: defaultRefusalMessage,
+		})
 	}
 
 	return anthropicclient.ChatMessage{

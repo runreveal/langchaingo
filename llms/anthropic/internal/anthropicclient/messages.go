@@ -184,14 +184,25 @@ func (tc ThinkingContent) GetType() string {
 	return tc.Type
 }
 
+// StopDetails carries the structured reason a generation stopped. Anthropic
+// populates it (alongside stop_reason) when a request is blocked by a safety
+// guardrail: Type is "refusal", Category names the policy area (e.g. "cyber"),
+// and Explanation is human-readable text suitable for showing to the user.
+type StopDetails struct {
+	Type        string `json:"type"`
+	Category    string `json:"category"`
+	Explanation string `json:"explanation"`
+}
+
 type MessageResponsePayload struct {
-	Content      []Content `json:"content"`
-	ID           string    `json:"id"`
-	Model        string    `json:"model"`
-	Role         string    `json:"role"`
-	StopReason   string    `json:"stop_reason"`
-	StopSequence string    `json:"stop_sequence"`
-	Type         string    `json:"type"`
+	Content      []Content    `json:"content"`
+	ID           string       `json:"id"`
+	Model        string       `json:"model"`
+	Role         string       `json:"role"`
+	StopReason   string       `json:"stop_reason"`
+	StopSequence string       `json:"stop_sequence"`
+	StopDetails  *StopDetails `json:"stop_details,omitempty"`
+	Type         string       `json:"type"`
 	Usage        struct {
 		InputTokens              int `json:"input_tokens"`
 		OutputTokens             int `json:"output_tokens"`
@@ -616,6 +627,22 @@ func handleMessageDeltaEvent(event map[string]interface{}, response MessageRespo
 	}
 	if stopReason, ok := delta["stop_reason"].(string); ok {
 		response.StopReason = stopReason
+	}
+	// A streamed refusal carries stop_details in the message_delta event with an
+	// otherwise-empty content array; capture it so callers can surface the
+	// explanation instead of an empty message.
+	if sd, ok := delta["stop_details"].(map[string]interface{}); ok {
+		details := &StopDetails{}
+		if v, ok := sd["type"].(string); ok {
+			details.Type = v
+		}
+		if v, ok := sd["category"].(string); ok {
+			details.Category = v
+		}
+		if v, ok := sd["explanation"].(string); ok {
+			details.Explanation = v
+		}
+		response.StopDetails = details
 	}
 
 	usage, ok := event["usage"].(map[string]interface{})
