@@ -84,10 +84,21 @@ type anthropicTextGenerationOutput struct {
 	Content      []anthropicContentBlock `json:"content"`
 	StopReason   string                  `json:"stop_reason"`
 	StopSequence string                  `json:"stop_sequence"`
+	StopDetails  *anthropicStopDetails   `json:"stop_details,omitempty"`
 	Usage        struct {
 		InputTokens  int `json:"input_tokens"`
 		OutputTokens int `json:"output_tokens"`
 	} `json:"usage"`
+}
+
+// anthropicStopDetails carries the structured reason a generation stopped. Newer
+// Claude models (Opus 5, Fable 5) populate it when a request is blocked by a
+// safety guardrail: Type is "refusal", Category names the policy area, and
+// Explanation is human-readable text suitable for showing to the user.
+type anthropicStopDetails struct {
+	Type        string `json:"type"`
+	Category    string `json:"category"`
+	Explanation string `json:"explanation"`
 }
 
 type anthropicContentBlock struct {
@@ -104,6 +115,7 @@ const (
 	anthropicStopReasonEndTurn      = "end_turn"
 	anthropicStopReasonStopSequence = "stop_sequence"
 	anthropicStopReasonToolUse      = "tool_use"
+	anthropicStopReasonRefusal      = "refusal"
 
 	anthropicRoleSystem    = "system"
 	anthropicRoleUser      = "user"
@@ -114,6 +126,33 @@ const (
 	anthropicMessageTypeToolUse    = "tool_use"
 	anthropicMessageTypeToolResult = "tool_result"
 )
+
+// defaultRefusalMessage is used when a refusal arrives without an explanation.
+const defaultRefusalMessage = "This request was blocked by the model's safety guardrails."
+
+// anthropicRefusalChoice converts a blocked (empty-content) response into a usable
+// ContentChoice carrying the refusal explanation, or returns nil when the response
+// is empty for some reason other than a refusal.
+func anthropicRefusalChoice(stopReason string, details *anthropicStopDetails, inTok, outTok int) *llms.ContentChoice {
+	isRefusal := stopReason == anthropicStopReasonRefusal ||
+		(details != nil && details.Type == anthropicStopReasonRefusal)
+	if !isRefusal {
+		return nil
+	}
+	message := defaultRefusalMessage
+	genInfo := map[string]interface{}{"input_tokens": inTok, "output_tokens": outTok}
+	if details != nil {
+		if details.Explanation != "" {
+			message = details.Explanation
+		}
+		genInfo["refusal_category"] = details.Category
+	}
+	return &llms.ContentChoice{
+		Content:        message,
+		StopReason:     anthropicStopReasonRefusal,
+		GenerationInfo: genInfo,
+	}
+}
 
 func createAnthropicCompletion(ctx context.Context,
 	client *Client,
@@ -188,15 +227,21 @@ func createAnthropicCompletion(ctx context.Context,
 		return nil, err
 	}
 
+	// A safety guardrail blocks the request with an empty content array and
+	// stop_reason "refusal"; surface the explanation as a normal choice instead of
+	// an opaque "no results" error (mirrors the direct Anthropic client).
 	if len(output.Content) == 0 {
+		if choice := anthropicRefusalChoice(
+			output.StopReason, output.StopDetails, output.Usage.InputTokens, output.Usage.OutputTokens,
+		); choice != nil {
+			return &llms.ContentResponse{Choices: []*llms.ContentChoice{choice}}, nil
+		}
 		return nil, errors.New("no results")
 	}
-	switch output.StopReason {
-	case anthropicStopReasonEndTurn, anthropicStopReasonStopSequence, anthropicStopReasonToolUse:
-		// ok
-	default:
-		return nil, fmt.Errorf("completed due to %s. Maybe try increasing max tokens", output.StopReason)
-	}
+	// Any other stop_reason (max_tokens, refusal-with-content, pause_turn, ...) is
+	// passed through on the choice below rather than turned into an error — erroring
+	// discarded a partial answer on a max_tokens truncation and made every new stop
+	// reason a hard failure. The caller decides what to do with StopReason.
 
 	choice := &llms.ContentChoice{
 		StopReason: output.StopReason,
@@ -554,6 +599,12 @@ func parseAnthropicStream(ctx context.Context, body io.Reader, options llms.Call
 
 	if len(choice.ToolCalls) > 0 {
 		choice.FuncCall = choice.ToolCalls[0].FunctionCall
+	}
+	// A streamed refusal arrives as empty content with stop_reason "refusal";
+	// substitute the generic message so the choice is not empty. (The streaming
+	// delta does not carry stop_details, so no explanation is available here.)
+	if choice.Content == "" && len(choice.ToolCalls) == 0 && choice.StopReason == anthropicStopReasonRefusal {
+		choice.Content = defaultRefusalMessage
 	}
 	return &llms.ContentResponse{Choices: []*llms.ContentChoice{choice}}, nil
 }
