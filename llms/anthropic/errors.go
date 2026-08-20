@@ -1,80 +1,62 @@
 package anthropic
 
 import (
-	"strings"
-
 	"github.com/tmc/langchaingo/llms"
 )
 
-// errorMapping represents a mapping from error patterns to error codes.
-type errorMapping struct {
-	patterns []string
-	code     llms.ErrorCode
-	message  string
-}
-
-// anthropicErrorMappings defines the error mappings for Anthropic.
-var anthropicErrorMappings = []errorMapping{
+// anthropicErrorMappings classifies errors that reach MapError without structure.
+//
+// Errors from the Anthropic HTTP client are *llms.APIError and are classified from
+// their status code and error type, so these patterns only cover what arrives as
+// plain text: transport failures, and errors surfaced by streaming events.
+//
+// Note the absence of bare status digits ("401", "429", ...). Matching those against
+// message text misreads dated model ids and request ids; status codes travel on
+// *llms.APIError instead.
+var anthropicErrorMappings = []llms.PatternMapping{
 	{
-		patterns: []string{"invalid api key", "authentication failed", "401"},
-		code:     llms.ErrCodeAuthentication,
-		message:  "Invalid or missing API key",
+		Patterns: []string{"invalid api key", "invalid x-api-key", "authentication failed"},
+		Code:     llms.ErrCodeAuthentication,
+		Summary:  "Invalid or missing API key",
 	},
 	{
-		patterns: []string{"rate limit", "too many requests", "429"},
-		code:     llms.ErrCodeRateLimit,
-		message:  "Rate limit exceeded",
+		Patterns: []string{"rate limit", "too many requests"},
+		Code:     llms.ErrCodeRateLimit,
+		Summary:  "Rate limit exceeded",
 	},
 	{
-		patterns: []string{"model not found", "invalid model"},
-		code:     llms.ErrCodeResourceNotFound,
-		message:  "Model not found",
+		Patterns: []string{"model not found", "invalid model"},
+		Code:     llms.ErrCodeResourceNotFound,
+		Summary:  "Model not found",
 	},
 	{
-		patterns: []string{"maximum tokens", "context window"},
-		code:     llms.ErrCodeTokenLimit,
-		message:  "Token limit exceeded",
+		Patterns: []string{"prompt is too long", "maximum tokens", "context window", "request_too_large"},
+		Code:     llms.ErrCodeTokenLimit,
+		Summary:  "Token limit exceeded",
 	},
 	{
-		patterns: []string{"content blocked", "safety violation"},
-		code:     llms.ErrCodeContentFilter,
-		message:  "Content blocked by safety filter",
+		Patterns: []string{"content blocked", "safety violation"},
+		Code:     llms.ErrCodeContentFilter,
+		Summary:  "Content blocked by safety filter",
 	},
 	{
-		patterns: []string{"credit limit", "quota exceeded"},
-		code:     llms.ErrCodeQuotaExceeded,
-		message:  "API quota exceeded",
+		Patterns: []string{"credit limit", "credit balance", "quota exceeded"},
+		Code:     llms.ErrCodeQuotaExceeded,
+		Summary:  "API quota exceeded",
 	},
 	{
-		patterns: []string{"invalid request", "400"},
-		code:     llms.ErrCodeInvalidRequest,
-		message:  "Invalid request",
+		Patterns: []string{"overloaded", "service unavailable"},
+		Code:     llms.ErrCodeProviderUnavailable,
+		Summary:  "Anthropic service temporarily unavailable",
 	},
 	{
-		patterns: []string{"overloaded", "503", "service unavailable"},
-		code:     llms.ErrCodeProviderUnavailable,
-		message:  "Anthropic service temporarily unavailable",
+		Patterns: []string{"invalid request"},
+		Code:     llms.ErrCodeInvalidRequest,
+		Summary:  "Invalid request",
 	},
 }
 
 // MapError maps Anthropic-specific errors to standardized error codes.
 func MapError(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	errStr := strings.ToLower(err.Error())
-
-	// Check each error mapping
-	for _, mapping := range anthropicErrorMappings {
-		for _, pattern := range mapping.patterns {
-			if strings.Contains(errStr, pattern) {
-				return llms.NewError(mapping.code, "anthropic", mapping.message).WithCause(err)
-			}
-		}
-	}
-
-	// Use the generic error mapper for unrecognized errors
-	mapper := llms.NewErrorMapper("anthropic")
-	return mapper.Map(err)
+	return llms.MapProviderError("anthropic", err, anthropicErrorMappings)
 }

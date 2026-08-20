@@ -1,80 +1,64 @@
 package bedrock
 
 import (
-	"strings"
-
 	"github.com/tmc/langchaingo/llms"
 )
 
-// errorMapping represents a mapping from error patterns to error codes.
-type errorMapping struct {
-	patterns []string
-	code     llms.ErrorCode
-	message  string
-}
-
-// bedrockErrorMappings defines the error mappings for AWS Bedrock.
-var bedrockErrorMappings = []errorMapping{
+// bedrockErrorMappings classifies AWS Bedrock errors.
+//
+// Unlike the HTTP providers, Bedrock surfaces AWS SDK errors whose text carries the
+// service's own exception names ("ThrottlingException", "ModelNotReadyException").
+// Those names are machine-readable identifiers rather than prose, so matching them
+// is reliable in a way that matching status digits is not.
+var bedrockErrorMappings = []llms.PatternMapping{
 	{
-		patterns: []string{"accessdeniedexception", "unauthorized", "invalid security token"},
-		code:     llms.ErrCodeAuthentication,
-		message:  "Invalid or missing AWS credentials",
+		Patterns: []string{"accessdeniedexception", "unauthorized", "invalid security token", "expiredtoken"},
+		Code:     llms.ErrCodeAuthentication,
+		Summary:  "Invalid or missing AWS credentials",
 	},
 	{
-		patterns: []string{"throttlingexception", "toomanyrequestsexception"},
-		code:     llms.ErrCodeRateLimit,
-		message:  "Request rate limit exceeded",
+		Patterns: []string{"throttlingexception", "toomanyrequestsexception"},
+		Code:     llms.ErrCodeRateLimit,
+		Summary:  "Request rate limit exceeded",
 	},
 	{
-		patterns: []string{"resourcenotfoundexception", "model not found"},
-		code:     llms.ErrCodeResourceNotFound,
-		message:  "Model not found or not accessible",
+		Patterns: []string{"resourcenotfoundexception", "model not found"},
+		Code:     llms.ErrCodeResourceNotFound,
+		Summary:  "Model not found or not accessible",
 	},
 	{
-		patterns: []string{"validationexception", "malformed"},
-		code:     llms.ErrCodeInvalidRequest,
-		message:  "Invalid request parameters",
+		Patterns: []string{"serviceunavailableexception", "serviceexception", "internalservererror"},
+		Code:     llms.ErrCodeProviderUnavailable,
+		Summary:  "AWS Bedrock service error",
 	},
 	{
-		patterns: []string{"modeltimeoutexception"},
-		code:     llms.ErrCodeTimeout,
-		message:  "Model invocation timeout",
+		Patterns: []string{"modelnotreadyexception"},
+		Code:     llms.ErrCodeProviderUnavailable,
+		Summary:  "Model not ready for invocation",
 	},
 	{
-		patterns: []string{"serviceexception", "internalservererror", "500"},
-		code:     llms.ErrCodeProviderUnavailable,
-		message:  "AWS Bedrock service error",
+		Patterns: []string{"modeltimeoutexception"},
+		Code:     llms.ErrCodeTimeout,
+		Summary:  "Model invocation timeout",
 	},
 	{
-		patterns: []string{"modelnotreadyexception"},
-		code:     llms.ErrCodeProviderUnavailable,
-		message:  "Model not ready for invocation",
+		Patterns: []string{"servicequotaexceededexception"},
+		Code:     llms.ErrCodeQuotaExceeded,
+		Summary:  "Service quota exceeded",
 	},
 	{
-		patterns: []string{"payload size", "token limit"},
-		code:     llms.ErrCodeTokenLimit,
-		message:  "Input size or token limit exceeded",
+		Patterns: []string{"payload size", "token limit", "too many input tokens"},
+		Code:     llms.ErrCodeTokenLimit,
+		Summary:  "Input size or token limit exceeded",
+	},
+	{
+		Patterns: []string{"validationexception", "malformed"},
+		Code:     llms.ErrCodeInvalidRequest,
+		Summary:  "Invalid request parameters",
 	},
 }
 
 // MapError maps AWS Bedrock-specific errors to standardized error codes.
 func MapError(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	errStr := strings.ToLower(err.Error())
-
-	// Check each error mapping
-	for _, mapping := range bedrockErrorMappings {
-		for _, pattern := range mapping.patterns {
-			if strings.Contains(errStr, pattern) {
-				return llms.NewError(mapping.code, "bedrock", mapping.message).WithCause(err)
-			}
-		}
-	}
-
-	// Use the generic error mapper for unrecognized errors
-	mapper := llms.NewErrorMapper("bedrock")
-	return mapper.Map(err)
+	return llms.MapProviderError("bedrock", err, bedrockErrorMappings)
 }

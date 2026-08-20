@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 
 	"github.com/tmc/langchaingo/llms"
@@ -289,6 +290,148 @@ func TestCustomMatcher(t *testing.T) {
 
 	if stdErr.Message != "This feature is not available" {
 		t.Errorf("Message = %v, want 'This feature is not available'", stdErr.Message)
+	}
+}
+
+type apiErrorCase struct {
+	name     string
+	err      *llms.APIError
+	expected llms.ErrorCode
+}
+
+func apiErrorCases() []apiErrorCase {
+	return []apiErrorCase{
+		{
+			name:     "provider error type wins over status",
+			err:      &llms.APIError{StatusCode: 400, Type: "rate_limit_error"},
+			expected: llms.ErrCodeRateLimit,
+		},
+		{
+			name:     "anthropic overloaded",
+			err:      &llms.APIError{StatusCode: llms.StatusCodeOverloaded, Type: "overloaded_error"},
+			expected: llms.ErrCodeProviderUnavailable,
+		},
+		{
+			name:     "529 without an error type",
+			err:      &llms.APIError{StatusCode: 529, Message: "Overloaded"},
+			expected: llms.ErrCodeProviderUnavailable,
+		},
+		{
+			name: "oversized prompt is a token limit, not a bad request",
+			err: &llms.APIError{
+				StatusCode: 400,
+				Type:       "invalid_request_error",
+				Message:    "prompt is too long: 250000 tokens > 200000 maximum",
+			},
+			expected: llms.ErrCodeTokenLimit,
+		},
+		{
+			name:     "genuinely malformed request",
+			err:      &llms.APIError{StatusCode: 400, Type: "invalid_request_error", Message: "unexpected role"},
+			expected: llms.ErrCodeInvalidRequest,
+		},
+		{
+			name:     "unknown model",
+			err:      &llms.APIError{StatusCode: 404, Message: "model: claude-bogus"},
+			expected: llms.ErrCodeResourceNotFound,
+		},
+		{
+			name:     "bad key",
+			err:      &llms.APIError{StatusCode: 401, Type: "authentication_error"},
+			expected: llms.ErrCodeAuthentication,
+		},
+		{
+			name:     "server error",
+			err:      &llms.APIError{StatusCode: 500},
+			expected: llms.ErrCodeProviderUnavailable,
+		},
+		{
+			name:     "quota",
+			err:      &llms.APIError{StatusCode: 400, Type: "insufficient_quota"},
+			expected: llms.ErrCodeQuotaExceeded,
+		},
+	}
+}
+
+func TestAPIErrorCode(t *testing.T) {
+	for _, tt := range apiErrorCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.err.ErrorCode(); got != tt.expected {
+				t.Errorf("ErrorCode() = %v, want %v", got, tt.expected)
+			}
+			// The same classification must survive going through a mapper.
+			wrapped := llms.NewErrorMapper("test").WrapError(tt.err)
+			var stdErr *llms.Error
+			if !errors.As(wrapped, &stdErr) {
+				t.Fatal("expected *llms.Error")
+			}
+			if stdErr.Code != tt.expected {
+				t.Errorf("mapped Code = %v, want %v", stdErr.Code, tt.expected)
+			}
+			if !errors.Is(wrapped, tt.err) {
+				t.Error("wrapped error should retain the cause")
+			}
+		})
+	}
+}
+
+// TestNoBareStatusDigitMatching guards the regression that motivated moving status
+// codes onto APIError: matching bare "429"/"400" against message text misreads
+// ordinary strings that happen to contain those digits.
+func TestNoBareStatusDigitMatching(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		notCode  llms.ErrorCode
+		wantCode llms.ErrorCode
+	}{
+		{
+			name:     "dated model id is not a rate limit",
+			err:      errors.New("model claude-3-5-sonnet-20240429 not found"),
+			notCode:  llms.ErrCodeRateLimit,
+			wantCode: llms.ErrCodeResourceNotFound,
+		},
+		{
+			name:     "request id is not a bad request",
+			err:      errors.New("request_id req_011CQ400ZxyZ failed: connection reset"),
+			notCode:  llms.ErrCodeInvalidRequest,
+			wantCode: llms.ErrCodeUnknown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wrapped := llms.NewErrorMapper("test").WrapError(tt.err)
+			var stdErr *llms.Error
+			if !errors.As(wrapped, &stdErr) {
+				t.Fatal("expected *llms.Error")
+			}
+			if stdErr.Code == tt.notCode {
+				t.Errorf("Code = %v, which is the misclassification this guards against", stdErr.Code)
+			}
+			if stdErr.Code != tt.wantCode {
+				t.Errorf("Code = %v, want %v", stdErr.Code, tt.wantCode)
+			}
+		})
+	}
+}
+
+// TestAPIErrorPreservesDetail checks that the original provider message survives
+// classification, since it is what ends up in logs and user-facing error text.
+func TestAPIErrorPreservesDetail(t *testing.T) {
+	apiErr := &llms.APIError{
+		StatusCode: 429,
+		Type:       "rate_limit_error",
+		Message:    "Number of request tokens has exceeded your per-minute rate limit",
+	}
+	got := apiErr.Error()
+	for _, want := range []string{"429", "rate_limit_error", "per-minute rate limit"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("Error() = %q, missing %q", got, want)
+		}
+	}
+	if !strings.Contains(got, "API returned unexpected status code") {
+		t.Errorf("Error() = %q, lost the legacy prefix callers match on", got)
 	}
 }
 
