@@ -7,16 +7,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// guardrailBody is the shape a Claude model on Bedrock returns when a request
-// trips a safety guardrail: an empty content array, stop_reason "refusal", and the
-// reason in stop_details.
+// guardrailBody is a real InvokeModel response body captured from
+// us.anthropic.claude-opus-5 on Bedrock (us-east-1) for a request that tripped the
+// cyber safety guardrail: empty content, stop_reason "refusal", reason in
+// stop_details. The extra usage fields Bedrock adds (cache_creation, service_tier,
+// output_tokens_details) are kept verbatim to confirm the struct tolerates them.
 const guardrailBody = `{
+  "model": "claude-opus-5",
+  "id": "msg_bdrk_test",
   "type": "message",
   "role": "assistant",
   "content": [],
   "stop_reason": "refusal",
-  "stop_details": {"type": "refusal", "category": "cyber", "explanation": "Blocked under the Usage Policy."},
-  "usage": {"input_tokens": 87, "output_tokens": 0}
+  "stop_sequence": null,
+  "stop_details": {"type": "refusal", "category": "cyber", "explanation": "This request triggered restrictions on violative cyber content and was blocked under Anthropic's Usage Policy. To learn more, see https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback."},
+  "usage": {"input_tokens": 40, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0, "cache_creation": {"ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 0}, "output_tokens": 4, "output_tokens_details": {"thinking_tokens": 0}, "service_tier": "standard"}
 }`
 
 func TestAnthropicRefusalParsesStopDetails(t *testing.T) {
