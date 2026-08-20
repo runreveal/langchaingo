@@ -140,7 +140,7 @@ func anthropicRefusalChoice(stopReason string, details *anthropicStopDetails, in
 		return nil
 	}
 	message := defaultRefusalMessage
-	genInfo := map[string]interface{}{"input_tokens": inTok, "output_tokens": outTok}
+	genInfo := map[string]any{"input_tokens": inTok, "output_tokens": outTok}
 	if details != nil {
 		if details.Explanation != "" {
 			message = details.Explanation
@@ -231,9 +231,10 @@ func createAnthropicCompletion(ctx context.Context,
 	// stop_reason "refusal"; surface the explanation as a normal choice instead of
 	// an opaque "no results" error (mirrors the direct Anthropic client).
 	if len(output.Content) == 0 {
-		if choice := anthropicRefusalChoice(
+		choice := anthropicRefusalChoice(
 			output.StopReason, output.StopDetails, output.Usage.InputTokens, output.Usage.OutputTokens,
-		); choice != nil {
+		)
+		if choice != nil {
 			return &llms.ContentResponse{Choices: []*llms.ContentChoice{choice}}, nil
 		}
 		return nil, errors.New("no results")
