@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/tmc/langchaingo/llms"
@@ -91,8 +92,16 @@ type ChatRequest struct {
 
 // MarshalJSON ensures that only one of MaxTokens or MaxCompletionTokens is sent.
 // OpenAI's API returns an error if both fields are present.
-// Also omits temperature for reasoning models (GPT-5, o1, o3) that only accept default temperature.
+// Also omits temperature for reasoning models (GPT-5, o1, o3) that only accept
+// default temperature, and disables reasoning on tool-calling requests for the
+// model families that reject the combination (see needsReasoningOffForTools).
 func (r ChatRequest) MarshalJSON() ([]byte, error) {
+	// r is a copy, so normalising fields here does not affect the caller.
+	if r.ReasoningEffort == "" && (len(r.Tools) > 0 || len(r.Functions) > 0) &&
+		needsReasoningOffForTools(r.Model) {
+		r.ReasoningEffort = ReasoningEffortNone
+	}
+
 	type Alias ChatRequest
 	aux := struct {
 		*Alias
@@ -128,6 +137,54 @@ func (r ChatRequest) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&aux)
+}
+
+// ReasoningEffortNone disables reasoning. It is only a valid effort level from
+// gpt-5.6 onward; earlier reasoning models reject it.
+const ReasoningEffortNone = "none"
+
+// needsReasoningOffForTools reports whether model rejects function tools on
+// /v1/chat/completions unless reasoning is explicitly turned off. From gpt-5.6
+// onward OpenAI answers such a request with
+//
+//	400 Function tools with reasoning_effort are not supported for gpt-5.6-sol
+//	in /v1/chat/completions. To use function tools, use /v1/responses or set
+//	reasoning_effort to 'none'.
+//
+// The server applies its default effort ("medium") when the field is absent, so
+// omitting reasoning_effort does not avoid the error - it has to be sent as
+// "none". Callers that want reasoning with tools must use /v1/responses.
+func needsReasoningOffForTools(model string) bool {
+	major, minor, ok := gptVersion(model)
+	if !ok {
+		return false
+	}
+	return major > 5 || (major == 5 && minor >= 6)
+}
+
+// gptVersion parses the version out of a "gpt-<major>[.<minor>][-<variant>]"
+// model id, e.g. "gpt-5.6-terra" -> (5, 6). ok is false for anything that is not
+// a numerically versioned gpt model, including "gpt-4o" and Azure deployment
+// names, which therefore keep the pre-existing behaviour.
+func gptVersion(model string) (major, minor int, ok bool) {
+	rest, found := strings.CutPrefix(strings.ToLower(model), "gpt-")
+	if !found {
+		return 0, 0, false
+	}
+	if i := strings.IndexByte(rest, '-'); i != -1 {
+		rest = rest[:i]
+	}
+	majorStr, minorStr, hasMinor := strings.Cut(rest, ".")
+	major, err := strconv.Atoi(majorStr)
+	if err != nil {
+		return 0, 0, false
+	}
+	if hasMinor {
+		if minor, err = strconv.Atoi(minorStr); err != nil {
+			return 0, 0, false
+		}
+	}
+	return major, minor, true
 }
 
 // isReasoningModel returns true if the model is a reasoning model that has temperature constraints.
