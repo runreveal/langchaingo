@@ -174,6 +174,13 @@ func (c *Client) CreateChat(ctx context.Context, r *ChatRequest) (*ChatCompletio
 	return resp, nil
 }
 
+// IsDefaultBaseURL reports whether the client talks to the stock OpenAI
+// endpoint. Behaviour that depends on OpenAI-only features is gated on this,
+// since OpenAI-compatible servers implement varying subsets of the API.
+func (c *Client) IsDefaultBaseURL() bool {
+	return c.apiType == APITypeOpenAI && (c.baseURL == "" || c.baseURL == defaultBaseURL)
+}
+
 func IsAzure(apiType APIType) bool {
 	return apiType == APITypeAzure || apiType == APITypeAzureAD
 }
