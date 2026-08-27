@@ -117,6 +117,19 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 		effectiveModel = o.model
 	}
 
+	// Route to /v1/responses when the model needs it (or the caller asked),
+	// before doing any chat-completions-shaped work.
+	if o.useResponsesAPI(&opts, effectiveModel) {
+		resp, err := o.generateWithResponses(ctx, messages, &opts, effectiveModel)
+		if err != nil {
+			return nil, err
+		}
+		if o.CallbacksHandler != nil {
+			o.CallbacksHandler.HandleLLMGenerateContentEnd(ctx, resp)
+		}
+		return resp, nil
+	}
+
 	// Get capabilities for this model
 	modelCaps := getModelCapabilities(effectiveModel)
 
@@ -385,6 +398,37 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 		o.CallbacksHandler.HandleLLMGenerateContentEnd(ctx, response)
 	}
 	return response, nil
+}
+
+// useResponsesAPI decides whether this generation goes to /v1/responses.
+//
+// An explicit WithResponsesAPI / WithChatCompletionsAPI always wins. Otherwise
+// the model decides: from gpt-5.6 on, /chat/completions cannot combine function
+// tools with reasoning, so Responses is the only endpoint that runs those models
+// at full capability.
+//
+// Automatic routing is limited to the stock OpenAI endpoint. Azure, OpenRouter,
+// DigitalOcean and other OpenAI-compatible servers vary in whether they
+// implement /v1/responses at all, so they keep the chat-completions default and
+// opt in explicitly.
+func (o *LLM) useResponsesAPI(opts *llms.CallOptions, model string) bool {
+	switch flavorOption(opts) {
+	case flavorResponses:
+		return true
+	case flavorChatCompletions:
+		return false
+	}
+	if !o.client.IsDefaultBaseURL() {
+		return false
+	}
+	return modelPrefersResponsesAPI(model)
+}
+
+// modelPrefersResponsesAPI reports whether a model should use /v1/responses by
+// default. See needsReasoningOffForTools in the client package for the error
+// that gpt-5.6 and later return on /chat/completions.
+func modelPrefersResponsesAPI(model string) bool {
+	return openaiclient.ModelRequiresResponsesAPIForTools(model)
 }
 
 // SupportsReasoning implements the ReasoningModel interface.

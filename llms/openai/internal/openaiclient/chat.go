@@ -143,23 +143,30 @@ func (r ChatRequest) MarshalJSON() ([]byte, error) {
 // gpt-5.6 onward; earlier reasoning models reject it.
 const ReasoningEffortNone = "none"
 
-// needsReasoningOffForTools reports whether model rejects function tools on
-// /v1/chat/completions unless reasoning is explicitly turned off. From gpt-5.6
-// onward OpenAI answers such a request with
+// ModelRequiresResponsesAPIForTools reports whether model can only combine
+// function tools with reasoning on /v1/responses. From gpt-5.6 onward OpenAI
+// answers such a request on /chat/completions with
 //
 //	400 Function tools with reasoning_effort are not supported for gpt-5.6-sol
 //	in /v1/chat/completions. To use function tools, use /v1/responses or set
 //	reasoning_effort to 'none'.
 //
 // The server applies its default effort ("medium") when the field is absent, so
-// omitting reasoning_effort does not avoid the error - it has to be sent as
-// "none". Callers that want reasoning with tools must use /v1/responses.
-func needsReasoningOffForTools(model string) bool {
+// omitting reasoning_effort does not avoid the error.
+func ModelRequiresResponsesAPIForTools(model string) bool {
 	major, minor, ok := gptVersion(model)
 	if !ok {
 		return false
 	}
 	return major > 5 || (major == 5 && minor >= 6)
+}
+
+// needsReasoningOffForTools reports whether a tool-calling request to
+// /chat/completions has to disable reasoning to be accepted. It is the fallback
+// for callers pinned to /chat/completions against a model that would otherwise
+// use /v1/responses; reasoning is lost, but the call succeeds.
+func needsReasoningOffForTools(model string) bool {
+	return ModelRequiresResponsesAPIForTools(model)
 }
 
 // gptVersion parses the version out of a "gpt-<major>[.<minor>][-<variant>]"
@@ -190,6 +197,12 @@ func gptVersion(model string) (major, minor int, ok bool) {
 // isReasoningModel returns true if the model is a reasoning model that has temperature constraints.
 // Reasoning models (GPT-5, o1, o3) only accept temperature=1 and reject other values.
 func isReasoningModel(model string) bool {
+	return IsReasoningModel(model)
+}
+
+// IsReasoningModel reports whether the model reasons before answering, and so
+// rejects a non-default temperature on either endpoint.
+func IsReasoningModel(model string) bool {
 	// o1 series: o1-preview, o1-mini
 	if strings.HasPrefix(model, "o1-") {
 		return true
