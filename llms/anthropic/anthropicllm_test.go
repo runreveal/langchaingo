@@ -62,6 +62,27 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestSupportsReasoningForCurrentClaudeModels(t *testing.T) {
+	tests := []struct {
+		model string
+		want  bool
+	}{
+		{model: "claude-opus-5-5", want: true},
+		{model: "claude-sonnet-5", want: true},
+		{model: "claude-fable-5-1", want: true},
+		{model: "claude-mythos-5-1", want: true},
+		{model: "global.anthropic.claude-opus-5-5", want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			if got := supportsReasoningForModel(tt.model); got != tt.want {
+				t.Errorf("supportsReasoningForModel(%q) = %t, want %t", tt.model, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestProcessMessages(t *testing.T) {
 	tests := []struct {
 		name       string

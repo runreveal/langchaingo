@@ -608,10 +608,12 @@ func supportsReasoningForModel(model string) bool {
 		return true
 	}
 
-	// Future Claude 5+ expected to support reasoning
+	// Claude 5 families support adaptive reasoning.
 	if strings.Contains(modelLower, "claude-5") ||
 		strings.Contains(modelLower, "claude-opus-5") ||
-		strings.Contains(modelLower, "claude-sonnet-5") {
+		strings.Contains(modelLower, "claude-sonnet-5") ||
+		strings.Contains(modelLower, "claude-fable-5") ||
+		strings.Contains(modelLower, "claude-mythos-5") {
 		return true
 	}
 

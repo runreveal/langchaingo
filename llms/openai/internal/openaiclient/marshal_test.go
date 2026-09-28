@@ -294,6 +294,9 @@ func TestIsReasoningModel(t *testing.T) {
 		{"gpt-5-preview", true},
 		{"gpt-5-mini", true},
 		{"gpt-5-turbo", true},
+		{"gpt-6-astra", true},
+		{"gpt-6-sol", true},
+		{"gpt-6-luna", true},
 
 		// o1 models - should be reasoning models
 		{"o1-preview", true},
@@ -305,6 +308,7 @@ func TestIsReasoningModel(t *testing.T) {
 		{"o3-mini", true},
 		{"o3-preview", true},
 		{"o3-large", true},
+		{"o4-mini", true},
 
 		// Edge cases
 		{"", false},

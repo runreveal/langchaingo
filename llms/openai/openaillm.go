@@ -439,34 +439,7 @@ func (o *LLM) SupportsReasoning() bool {
 	if model == "" {
 		model = o.client.Model
 	}
-
-	modelLower := strings.ToLower(model)
-
-	// OpenAI o1 series (reasoning models)
-	if strings.HasPrefix(modelLower, "o1-") ||
-		strings.Contains(modelLower, "o1-preview") ||
-		strings.Contains(modelLower, "o1-mini") {
-		return true
-	}
-
-	// OpenAI o3 series
-	if strings.HasPrefix(modelLower, "o3-") ||
-		strings.Contains(modelLower, "o3-mini") {
-		return true
-	}
-
-	// Future o4+ series
-	if strings.HasPrefix(modelLower, "o4-") ||
-		strings.HasPrefix(modelLower, "o5-") {
-		return true
-	}
-
-	// GPT-5 series (expected to have reasoning capabilities)
-	if strings.HasPrefix(modelLower, "gpt-5") {
-		return true
-	}
-
-	return false
+	return openaiclient.IsReasoningModel(strings.ToLower(model))
 }
 
 // CreateEmbedding creates embeddings for the given input texts.
