@@ -1,6 +1,6 @@
 module github.com/tmc/langchaingo/examples/google-alloydb-chat-message-history-example
 
-go 1.24.3
+go 1.25.0
 
 require github.com/tmc/langchaingo v0.1.14-pre.4
 
@@ -23,7 +23,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.7.2 // indirect
+	github.com/jackc/pgx/v5 v5.9.2 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
 	go.opencensus.io v0.24.0 // indirect
@@ -33,12 +33,12 @@ require (
 	go.opentelemetry.io/otel v1.36.0 // indirect
 	go.opentelemetry.io/otel/metric v1.36.0 // indirect
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/net v0.41.0 // indirect
+	golang.org/x/crypto v0.41.0 // indirect
+	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	google.golang.org/api v0.218.0 // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
@@ -47,4 +47,3 @@ require (
 	google.golang.org/grpc v1.70.0 // indirect
 	google.golang.org/protobuf v1.36.3 // indirect
 )
-
