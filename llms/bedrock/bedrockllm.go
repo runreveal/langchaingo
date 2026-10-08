@@ -109,6 +109,14 @@ func processMessages(messages []llms.MessageContent) ([]bedrockclient.Message, e
 
 	for _, m := range messages {
 		for _, part := range m.Parts {
+			// A cache breakpoint wraps the part it applies to: convert the inner
+			// part, then attach the breakpoint to the message it produced.
+			var cacheControl *llms.CacheControl
+			if cached, ok := part.(llms.CachedContent); ok {
+				cacheControl = cached.CacheControl
+				part = cached.ContentPart
+			}
+			before := len(bedrockMsgs)
 			switch part := part.(type) {
 			case llms.TextContent:
 				bedrockMsgs = append(bedrockMsgs, bedrockclient.Message{
@@ -143,6 +151,9 @@ func processMessages(messages []llms.MessageContent) ([]bedrockclient.Message, e
 				})
 			default:
 				return nil, errors.New("unsupported message type")
+			}
+			if cacheControl != nil && len(bedrockMsgs) > before {
+				bedrockMsgs[len(bedrockMsgs)-1].CacheControl = cacheControl
 			}
 		}
 	}

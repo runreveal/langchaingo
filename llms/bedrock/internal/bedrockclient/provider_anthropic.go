@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
@@ -46,6 +48,50 @@ type anthropicTextGenerationInputContent struct {
 	ID    string      `json:"id,omitempty"`
 	Name  string      `json:"name,omitempty"`
 	Input interface{} `json:"input,omitempty"`
+	// CacheControl marks this block as the end of a cacheable prompt prefix.
+	CacheControl *anthropicCacheControl `json:"cache_control,omitempty"`
+}
+
+// anthropicCacheControl is a prompt-cache breakpoint. TTL is omitted for the
+// default 5-minute cache: Bedrock rejects the field on models that only offer it.
+type anthropicCacheControl struct {
+	Type string `json:"type"`
+	TTL  string `json:"ttl,omitempty"`
+}
+
+// anthropicSystemPrompt is the system field. It is sent as a plain string unless
+// it carries a cache breakpoint, which only the block-array form can express.
+type anthropicSystemPrompt struct {
+	Text         string
+	CacheControl *anthropicCacheControl
+}
+
+func (s anthropicSystemPrompt) MarshalJSON() ([]byte, error) {
+	if s.CacheControl == nil {
+		return json.Marshal(s.Text)
+	}
+	return json.Marshal([]anthropicTextGenerationInputContent{{
+		Type:         AnthropicMessageTypeText,
+		Text:         s.Text,
+		CacheControl: s.CacheControl,
+	}})
+}
+
+// anthropicContextManagement configures server-side context compaction.
+type anthropicContextManagement struct {
+	Edits []anthropicContextManagementEdit `json:"edits"`
+}
+
+type anthropicContextManagementEdit struct {
+	Type                 string                             `json:"type"`
+	Trigger              *anthropicContextManagementTrigger `json:"trigger,omitempty"`
+	Instructions         string                             `json:"instructions,omitempty"`
+	PauseAfterCompaction bool                               `json:"pause_after_compaction,omitempty"`
+}
+
+type anthropicContextManagementTrigger struct {
+	Type  string `json:"type"`
+	Value int    `json:"value"`
 }
 
 type anthropicTextGenerationInputMessage struct {
@@ -63,8 +109,10 @@ type anthropicTextGenerationInput struct {
 	AnthropicVersion string `json:"anthropic_version"`
 	// The maximum number of tokens to generate per result. Required
 	MaxTokens int `json:"max_tokens"`
+	// Beta features to enable, e.g. "compact-2026-01-12". Optional
+	AnthropicBeta []string `json:"anthropic_beta,omitempty"`
 	// The system prompt to use. Optional
-	System string `json:"system,omitempty"`
+	System *anthropicSystemPrompt `json:"system,omitempty"`
 	// The messages to use. Required
 	Messages []*anthropicTextGenerationInputMessage `json:"messages"`
 	// The amount of randomness injected into the response. Optional, default = 1
@@ -81,6 +129,8 @@ type anthropicTextGenerationInput struct {
 	Tools []BedrockTool `json:"tools,omitempty"`
 	// Tool choice configuration. Optional
 	ToolChoice *BedrockToolChoice `json:"tool_choice,omitempty"`
+	// Server-side context management (compaction). Optional
+	ContextManagement *anthropicContextManagement `json:"context_management,omitempty"`
 }
 
 // anthropicTextGenerationOutput is the generated output.
@@ -101,10 +151,43 @@ type anthropicTextGenerationOutput struct {
 	StopSequence string `json:"stop_sequence"`
 	// Present when a safety guardrail blocks the request (stop_reason "refusal").
 	StopDetails *anthropicStopDetails `json:"stop_details,omitempty"`
-	Usage       struct {
-		InputTokens  int `json:"input_tokens"`
-		OutputTokens int `json:"output_tokens"`
-	} `json:"usage"`
+	Usage       anthropicUsage        `json:"usage"`
+}
+
+// anthropicUsage is the token accounting for a response. InputTokens excludes
+// the cache partitions, so the full prompt is the sum of all three input fields.
+type anthropicUsage struct {
+	InputTokens              int `json:"input_tokens"`
+	OutputTokens             int `json:"output_tokens"`
+	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+	// Iterations is present only when compaction ran during the request; the
+	// top-level counts then exclude the compaction pass.
+	Iterations []anthropicUsageIteration `json:"iterations,omitempty"`
+}
+
+type anthropicUsageIteration struct {
+	Type         string `json:"type"`
+	InputTokens  int    `json:"input_tokens"`
+	OutputTokens int    `json:"output_tokens"`
+}
+
+// generationInfo returns the usage fields in the keys both the legacy Bedrock
+// callers (snake_case) and the direct Anthropic provider (PascalCase) use.
+func (u anthropicUsage) generationInfo() map[string]any {
+	info := map[string]any{
+		"input_tokens":             u.InputTokens,
+		"output_tokens":            u.OutputTokens,
+		"CacheCreationInputTokens": u.CacheCreationInputTokens,
+		"CacheReadInputTokens":     u.CacheReadInputTokens,
+	}
+	for _, it := range u.Iterations {
+		if it.Type == AnthropicMessageTypeCompaction {
+			info["CompactionInputTokens"] = it.InputTokens
+			info["CompactionOutputTokens"] = it.OutputTokens
+		}
+	}
+	return info
 }
 
 // anthropicStopDetails carries the structured reason a generation stopped. Newer
@@ -119,8 +202,10 @@ type anthropicStopDetails struct {
 
 // anthropicContentBlock represents a content block in Anthropic response
 type anthropicContentBlock struct {
-	Type string `json:"type"` // "text" or "tool_use"
+	Type string `json:"type"` // "text", "tool_use" or "compaction"
 	Text string `json:"text,omitempty"`
+	// Content is the summary of a "compaction" block.
+	Content string `json:"content,omitempty"`
 	// Tool use fields
 	ID    string      `json:"id,omitempty"`
 	Name  string      `json:"name,omitempty"`
@@ -133,6 +218,7 @@ const (
 	AnthropicCompletionReasonMaxTokens    = "max_tokens"
 	AnthropicCompletionReasonStopSequence = "stop_sequence"
 	AnthropicCompletionReasonRefusal      = "refusal"
+	AnthropicCompletionReasonCompaction   = "compaction"
 )
 
 // defaultRefusalMessage is used when a refusal arrives without an explanation.
@@ -180,7 +266,36 @@ const (
 	AnthropicMessageTypeImage      = "image"
 	AnthropicMessageTypeToolUse    = "tool_use"
 	AnthropicMessageTypeToolResult = "tool_result"
+	AnthropicMessageTypeCompaction = "compaction"
 )
+
+// Beta flag and strategy for threshold-triggered server-side compaction.
+// Ref: https://docs.aws.amazon.com/bedrock/latest/userguide/claude-messages-compaction.html
+const (
+	AnthropicBetaCompaction        = "compact-2026-01-12"
+	anthropicCompactionStrategy    = "compact_20260112"
+	anthropicMinCompactionTrigger  = 50_000
+	anthropicDefaultCompactTrigger = 150_000
+)
+
+// Call-option metadata keys read by the Anthropic provider.
+const (
+	MetadataKeyCompaction    = "bedrock:compaction"
+	MetadataKeyAnthropicBeta = "bedrock:anthropic_beta"
+)
+
+// CompactionConfig configures server-side context compaction for Claude models
+// on Bedrock (compact_20260112, Claude 4.6+).
+type CompactionConfig struct {
+	// TriggerTokens is the input-token count that triggers compaction. Zero uses
+	// the API default (150k); values below the 50k minimum are raised to it.
+	TriggerTokens int
+	// Instructions replaces the default summarization prompt entirely.
+	Instructions string
+	// PauseAfterCompaction returns with stop_reason "compaction" after the summary
+	// is generated, so the caller can rebuild its history before continuing.
+	PauseAfterCompaction bool
+}
 
 func createAnthropicCompletion(ctx context.Context,
 	client *bedrockruntime.Client,
@@ -188,38 +303,9 @@ func createAnthropicCompletion(ctx context.Context,
 	messages []Message,
 	options llms.CallOptions,
 ) (*llms.ContentResponse, error) {
-	inputContents, systemPrompt, err := processInputMessagesAnthropic(messages)
+	input, err := buildAnthropicInput(messages, options)
 	if err != nil {
 		return nil, err
-	}
-
-	input := anthropicTextGenerationInput{
-		AnthropicVersion: AnthropicLatestVersion,
-		MaxTokens:        getMaxTokens(options.MaxTokens, 2048),
-		System:           systemPrompt,
-		Messages:         inputContents,
-		Temperature:      options.Temperature,
-		TopP:             options.TopP,
-		TopK:             options.TopK,
-		StopSequences:    options.StopWords,
-	}
-
-	// Add tools if provided
-	if len(options.Tools) > 0 {
-		bedrockTools, err := convertToolsToBedrockTools(options.Tools)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert tools: %w", err)
-		}
-		input.Tools = bedrockTools
-
-		// Add tool choice if provided
-		if options.ToolChoice != nil {
-			toolChoice, err := convertToolChoiceToBedrockToolChoice(options.ToolChoice)
-			if err != nil {
-				return nil, fmt.Errorf("failed to convert tool choice: %w", err)
-			}
-			input.ToolChoice = toolChoice
-		}
 	}
 
 	body, err := json.Marshal(input)
@@ -248,9 +334,89 @@ func createAnthropicCompletion(ctx context.Context,
 		return nil, err
 	}
 
-	var output anthropicTextGenerationOutput
-	err = json.Unmarshal(resp.Body, &output)
+	return parseAnthropicResponse(resp.Body)
+}
+
+// buildAnthropicInput assembles the InvokeModel request body from the messages
+// and call options.
+func buildAnthropicInput(messages []Message, options llms.CallOptions) (anthropicTextGenerationInput, error) {
+	inputContents, systemPrompt, err := processInputMessagesAnthropic(messages)
 	if err != nil {
+		return anthropicTextGenerationInput{}, err
+	}
+
+	input := anthropicTextGenerationInput{
+		AnthropicVersion: AnthropicLatestVersion,
+		MaxTokens:        getMaxTokens(options.MaxTokens, 2048),
+		System:           systemPrompt,
+		Messages:         inputContents,
+		Temperature:      options.Temperature,
+		TopP:             options.TopP,
+		TopK:             options.TopK,
+		StopSequences:    options.StopWords,
+	}
+
+	// Add tools if provided
+	if len(options.Tools) > 0 {
+		bedrockTools, err := convertToolsToBedrockTools(options.Tools)
+		if err != nil {
+			return anthropicTextGenerationInput{}, fmt.Errorf("failed to convert tools: %w", err)
+		}
+		input.Tools = bedrockTools
+
+		// Add tool choice if provided
+		if options.ToolChoice != nil {
+			toolChoice, err := convertToolChoiceToBedrockToolChoice(options.ToolChoice)
+			if err != nil {
+				return anthropicTextGenerationInput{}, fmt.Errorf("failed to convert tool choice: %w", err)
+			}
+			input.ToolChoice = toolChoice
+		}
+	}
+
+	if betas, ok := options.Metadata[MetadataKeyAnthropicBeta].([]string); ok {
+		input.AnthropicBeta = appendUnique(input.AnthropicBeta, betas...)
+	}
+	if cfg, ok := options.Metadata[MetadataKeyCompaction].(*CompactionConfig); ok && cfg != nil {
+		input.ContextManagement = compactionContextManagement(cfg)
+		input.AnthropicBeta = appendUnique(input.AnthropicBeta, AnthropicBetaCompaction)
+	}
+
+	return input, nil
+}
+
+// compactionContextManagement converts a CompactionConfig into the request's
+// context_management block.
+func compactionContextManagement(cfg *CompactionConfig) *anthropicContextManagement {
+	trigger := cfg.TriggerTokens
+	if trigger == 0 {
+		trigger = anthropicDefaultCompactTrigger
+	}
+	trigger = max(trigger, anthropicMinCompactionTrigger)
+	return &anthropicContextManagement{
+		Edits: []anthropicContextManagementEdit{{
+			Type:                 anthropicCompactionStrategy,
+			Trigger:              &anthropicContextManagementTrigger{Type: "input_tokens", Value: trigger},
+			Instructions:         cfg.Instructions,
+			PauseAfterCompaction: cfg.PauseAfterCompaction,
+		}},
+	}
+}
+
+func appendUnique(dst []string, values ...string) []string {
+	for _, v := range values {
+		if !slices.Contains(dst, v) {
+			dst = append(dst, v)
+		}
+	}
+	return dst
+}
+
+// parseAnthropicResponse converts an InvokeModel response body into a single
+// ContentChoice.
+func parseAnthropicResponse(body []byte) (*llms.ContentResponse, error) {
+	var output anthropicTextGenerationOutput
+	if err := json.Unmarshal(body, &output); err != nil {
 		return nil, err
 	}
 
@@ -273,11 +439,8 @@ func createAnthropicCompletion(ctx context.Context,
 
 	// Process content blocks and build a single ContentChoice
 	choice := &llms.ContentChoice{
-		StopReason: output.StopReason,
-		GenerationInfo: map[string]interface{}{
-			"input_tokens":  output.Usage.InputTokens,
-			"output_tokens": output.Usage.OutputTokens,
-		},
+		StopReason:     output.StopReason,
+		GenerationInfo: output.Usage.generationInfo(),
 	}
 
 	var textContent string
@@ -285,9 +448,9 @@ func createAnthropicCompletion(ctx context.Context,
 
 	for _, block := range output.Content {
 		switch block.Type {
-		case "text":
+		case AnthropicMessageTypeText:
 			textContent += block.Text
-		case "tool_use":
+		case AnthropicMessageTypeToolUse:
 			toolCall, err := convertBedrockToolCallToLLMToolCall(BedrockToolCall{
 				Type:  block.Type,
 				ID:    block.ID,
@@ -298,6 +461,9 @@ func createAnthropicCompletion(ctx context.Context,
 				return nil, fmt.Errorf("failed to convert tool call: %w", err)
 			}
 			toolCalls = append(toolCalls, toolCall)
+		case AnthropicMessageTypeCompaction:
+			// Same key as the direct Anthropic provider, so callers handle both alike.
+			choice.GenerationInfo["CompactionSummary"] = block.Content
 		}
 	}
 
@@ -333,17 +499,14 @@ type streamingCompletionResponseChunk struct {
 		OutputTokens int `json:"output_tokens"`
 	} `json:"usage"`
 	Message struct {
-		ID           string `json:"id"`
-		Type         string `json:"type"`
-		Role         string `json:"role"`
-		Content      []any  `json:"content"`
-		Model        string `json:"model"`
-		StopReason   any    `json:"stop_reason"`
-		StopSequence any    `json:"stop_sequence"`
-		Usage        struct {
-			InputTokens  int `json:"input_tokens"`
-			OutputTokens int `json:"output_tokens"`
-		} `json:"usage"`
+		ID           string         `json:"id"`
+		Type         string         `json:"type"`
+		Role         string         `json:"role"`
+		Content      []any          `json:"content"`
+		Model        string         `json:"model"`
+		StopReason   any            `json:"stop_reason"`
+		StopSequence any            `json:"stop_sequence"`
+		Usage        anthropicUsage `json:"usage"`
 	} `json:"message"`
 }
 
@@ -379,6 +542,8 @@ func parseStreamingCompletionResponse(
 			switch resp.Type {
 			case "message_start":
 				contentchoices[0].GenerationInfo["input_tokens"] = resp.Message.Usage.InputTokens
+				contentchoices[0].GenerationInfo["CacheCreationInputTokens"] = resp.Message.Usage.CacheCreationInputTokens
+				contentchoices[0].GenerationInfo["CacheReadInputTokens"] = resp.Message.Usage.CacheReadInputTokens
 			case "content_block_delta":
 				if err = options.StreamingFunc(ctx, []byte(resp.Delta.Text)); err != nil {
 					return nil, err
@@ -408,8 +573,10 @@ func parseStreamingCompletionResponse(
 }
 
 // process the input messages to anthropic supported input
-// returns the input content and system prompt.
-func processInputMessagesAnthropic(messages []Message) ([]*anthropicTextGenerationInputMessage, string, error) {
+// returns the input content and system prompt (nil when there is none).
+func processInputMessagesAnthropic(
+	messages []Message,
+) ([]*anthropicTextGenerationInputMessage, *anthropicSystemPrompt, error) {
 	chunkedMessages := make([][]Message, 0, len(messages))
 	currentChunk := make([]Message, 0, len(messages))
 	var lastRole llms.ChatMessageType
@@ -428,22 +595,28 @@ func processInputMessagesAnthropic(messages []Message) ([]*anthropicTextGenerati
 	}
 
 	inputContents := make([]*anthropicTextGenerationInputMessage, 0, len(messages))
-	var systemPrompt string
+	var systemPrompt *anthropicSystemPrompt
 	for _, chunk := range chunkedMessages {
 		role, err := getAnthropicRole(chunk[0].Role)
 		if err != nil {
-			return nil, "", err
+			return nil, nil, err
 		}
 		if role == AnthropicSystem {
-			if systemPrompt != "" {
-				return nil, "", errors.New("multiple system prompts")
+			if systemPrompt != nil {
+				return nil, nil, errors.New("multiple system prompts")
 			}
+			systemPrompt = &anthropicSystemPrompt{}
 			for _, message := range chunk {
 				c := getAnthropicInputContent(message)
 				if c.Type != AnthropicMessageTypeText {
-					return nil, "", errors.New("system prompt must be text")
+					return nil, nil, errors.New("system prompt must be text")
 				}
-				systemPrompt += c.Text
+				systemPrompt.Text += c.Text
+				// The system prompt is sent as one block, so a breakpoint on any
+				// part of it caches the whole of it.
+				if c.CacheControl != nil {
+					systemPrompt.CacheControl = c.CacheControl
+				}
 			}
 			continue
 		}
@@ -526,5 +699,22 @@ func getAnthropicInputContent(message Message) anthropicTextGenerationInputConte
 			Input: input,
 		}
 	}
+	c.CacheControl = anthropicCacheControlFrom(message.CacheControl)
 	return c
+}
+
+// anthropicCacheControlFrom converts a generic cache breakpoint. A duration of an
+// hour or more selects the 1-hour TTL; anything shorter uses the default.
+func anthropicCacheControlFrom(cc *llms.CacheControl) *anthropicCacheControl {
+	if cc == nil {
+		return nil
+	}
+	out := &anthropicCacheControl{Type: cc.Type}
+	if out.Type == "" {
+		out.Type = "ephemeral"
+	}
+	if cc.Duration >= time.Hour {
+		out.TTL = "1h"
+	}
+	return out
 }
