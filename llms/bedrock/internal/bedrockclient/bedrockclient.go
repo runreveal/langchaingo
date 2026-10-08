@@ -32,6 +32,9 @@ type Message struct {
 	ToolArgs   string `json:"tool_args,omitempty"`
 	// Tool result fields
 	ToolUseID string `json:"tool_use_id,omitempty"`
+	// CacheControl places a prompt-cache breakpoint after this content. Only the
+	// Anthropic provider honors it.
+	CacheControl *llms.CacheControl `json:"cache_control,omitempty"`
 }
 
 func getProvider(modelID string) string {
