@@ -143,6 +143,7 @@ func TestOllama_ReasoningIntegration(t *testing.T) {
 	if serverURL == "" {
 		serverURL = "http://localhost:11434"
 	}
+	skipIfServerUnavailable(t, serverURL)
 
 	// Try to create client
 	llm, err := New(
@@ -205,6 +206,7 @@ func TestOllama_CachingIntegration(t *testing.T) {
 	if serverURL == "" {
 		serverURL = "http://localhost:11434"
 	}
+	skipIfServerUnavailable(t, serverURL)
 
 	llm, err := New(
 		WithServerURL(serverURL),

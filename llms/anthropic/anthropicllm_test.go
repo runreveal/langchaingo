@@ -2,7 +2,6 @@ package anthropic
 
 import (
 	"fmt"
-	"os"
 	"reflect"
 	"testing"
 
@@ -49,7 +48,7 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv("ANTHROPIC_API_KEY", tt.envToken)
+			t.Setenv("ANTHROPIC_API_KEY", tt.envToken)
 
 			llm, err := New(tt.opts...)
 			if (err != nil) != tt.wantErr {

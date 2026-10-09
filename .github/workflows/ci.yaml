@@ -1,4 +1,10 @@
 # GitHub Actions CI workflow for langchaingo.
+#
+# Tests run without any provider API keys so CI never calls a paid LLM API.
+# Provider tests replay committed httprr recordings (testdata/*.httprr) and
+# skip when no recording exists; httprr only hits the network with -httprecord,
+# which CI never passes. -short skips Docker/testcontainers tests.
+# Do not add API key secrets to these jobs.
 name: CI
 on:
   push:
@@ -8,6 +14,7 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -60,11 +67,8 @@ jobs:
           echo "Go version: $GO_VERSION"
           echo "version=$GO_VERSION" >> $GITHUB_OUTPUT
       - name: Test
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GENAI_API_KEY: ${{ secrets.GENAI_API_KEY }}
         run: |
-          go test -v -json -coverprofile=coverage-${{ steps.go-version.outputs.version }}.out ./... | tee test-results-${{ steps.go-version.outputs.version }}.ndjson
+          go test -short -v -json -coverprofile=coverage-${{ steps.go-version.outputs.version }}.out ./... | tee test-results-${{ steps.go-version.outputs.version }}.ndjson
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
@@ -84,11 +88,11 @@ jobs:
           go-version-file: "go.mod"
           cache: true
           check-latest: false
+      - name: Get Go version
+        id: go-version
+        run: echo "version=$(go version | awk '{print $3}' | sed 's/go//')" >> $GITHUB_OUTPUT
       - name: Test with Race Detector
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GENAI_API_KEY: ${{ secrets.GENAI_API_KEY }}
-        run: go test -v -json ./... -race | tee test-results-race-${{ steps.go-version.outputs.version }}.ndjson
+        run: go test -short -race -v -json ./... | tee test-results-race-${{ steps.go-version.outputs.version }}.ndjson
       - name: Upload race test results
         uses: actions/upload-artifact@v4
         if: always()

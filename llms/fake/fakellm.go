@@ -3,11 +3,13 @@ package fake
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/tmc/langchaingo/llms"
 )
 
 type LLM struct {
+	mu        sync.Mutex
 	responses []string
 	index     int
 }
@@ -21,6 +23,8 @@ func NewFakeLLM(responses []string) *LLM {
 
 // GenerateContent generate fake content.
 func (f *LLM) GenerateContent(_ context.Context, _ []llms.MessageContent, _ ...llms.CallOption) (*llms.ContentResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if len(f.responses) == 0 {
 		return nil, errors.New("no responses configured")
 	}
@@ -48,10 +52,14 @@ func (f *LLM) Call(ctx context.Context, prompt string, options ...llms.CallOptio
 
 // Reset the index to 0.
 func (f *LLM) Reset() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.index = 0
 }
 
 // AddResponse adds a response to the list of responses.
 func (f *LLM) AddResponse(response string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.responses = append(f.responses, response)
 }

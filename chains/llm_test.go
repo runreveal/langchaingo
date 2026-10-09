@@ -96,12 +96,13 @@ func TestLLMChainWithGoogleAI(t *testing.T) {
 	// This is necessary because the Google API library doesn't add the API key
 	// when a custom HTTP client is provided via WithHTTPClient
 	apiKey := os.Getenv("GOOGLE_API_KEY")
-	transport := httputil.DefaultTransport
-	if apiKey != "" {
-		transport = &httputil.ApiKeyTransport{
-			Transport: transport,
-			APIKey:    apiKey,
-		}
+	if apiKey == "" {
+		// Replaying: recordings scrub the key to this placeholder.
+		apiKey = "test-api-key"
+	}
+	transport := &httputil.ApiKeyTransport{
+		Transport: httputil.DefaultTransport,
+		APIKey:    apiKey,
 	}
 
 	rr := httprr.OpenForTest(t, transport)
@@ -118,7 +119,7 @@ func TestLLMChainWithGoogleAI(t *testing.T) {
 
 	// Configure client with httprr
 	var opts []googleai.Option
-	opts = append(opts, googleai.WithRest(), googleai.WithHTTPClient(rr.Client()))
+	opts = append(opts, googleai.WithRest(), googleai.WithHTTPClient(rr.Client()), googleai.WithAPIKey(apiKey))
 
 	model, err := googleai.New(ctx, opts...)
 	require.NoError(t, err)

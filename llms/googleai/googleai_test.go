@@ -39,12 +39,13 @@ func newHTTPRRClient(t *testing.T, opts ...Option) *GoogleAI {
 	// This is necessary because the Google API library doesn't add the API key
 	// when a custom HTTP client is provided via WithHTTPClient
 	apiKey := os.Getenv("GOOGLE_API_KEY")
-	transport := httputil.DefaultTransport
-	if apiKey != "" {
-		transport = &httputil.ApiKeyTransport{
-			Transport: transport,
-			APIKey:    apiKey,
-		}
+	if apiKey == "" {
+		// Replaying: recordings scrub the key to this placeholder.
+		apiKey = "test-api-key"
+	}
+	transport := &httputil.ApiKeyTransport{
+		Transport: httputil.DefaultTransport,
+		APIKey:    apiKey,
 	}
 
 	rr := httprr.OpenForTest(t, transport)
@@ -60,7 +61,7 @@ func newHTTPRRClient(t *testing.T, opts ...Option) *GoogleAI {
 	})
 
 	// Configure client with httprr
-	opts = append(opts, WithRest(), WithHTTPClient(rr.Client()))
+	opts = append(opts, WithRest(), WithHTTPClient(rr.Client()), WithAPIKey(apiKey))
 
 	llm, err := New(context.Background(), opts...)
 	if err != nil {
