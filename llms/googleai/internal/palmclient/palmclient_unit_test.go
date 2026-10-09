@@ -280,13 +280,9 @@ func TestProcessPredictionsErrors(t *testing.T) {
 			"not a float", // This should cause an error
 		}
 
-		floatValues := []float32{}
 		for _, v := range values {
-			switch val := v.(type) {
-			case float32:
-				floatValues = append(floatValues, val)
-			case float64:
-				floatValues = append(floatValues, float32(val))
+			switch v.(type) {
+			case float32, float64:
 			default:
 				// This simulates the error case
 				err := errors.New("invalid value")

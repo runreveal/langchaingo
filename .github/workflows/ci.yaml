@@ -27,15 +27,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          # Lint tools (golangci-lint, golines) are pinned in tools.mod.
+          go-version-file: tools.mod
           cache: true
+          cache-dependency-path: tools.sum
           check-latest: false
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v7
-        with:
-          version: v2.1.6
-          args: --timeout=5m
-          skip-cache: false
+      - name: Lint
+        run: make lint
   
   build:
     name: build

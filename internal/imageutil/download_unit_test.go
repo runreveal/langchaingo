@@ -22,7 +22,7 @@ func TestDownloadImageData(t *testing.T) {
 			name: "successful PNG download",
 			serverFunc: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "image/png")
-				w.Write([]byte{0x89, 0x50, 0x4E, 0x47}) // PNG header
+				_, _ = w.Write([]byte{0x89, 0x50, 0x4E, 0x47}) // PNG header
 			},
 			wantType: "png",
 			wantData: []byte{0x89, 0x50, 0x4E, 0x47},
@@ -32,7 +32,7 @@ func TestDownloadImageData(t *testing.T) {
 			name: "successful JPEG download",
 			serverFunc: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "image/jpeg")
-				w.Write([]byte{0xFF, 0xD8, 0xFF, 0xE0}) // JPEG header
+				_, _ = w.Write([]byte{0xFF, 0xD8, 0xFF, 0xE0}) // JPEG header
 			},
 			wantType: "jpeg",
 			wantData: []byte{0xFF, 0xD8, 0xFF, 0xE0},
@@ -42,7 +42,7 @@ func TestDownloadImageData(t *testing.T) {
 			name: "successful GIF download",
 			serverFunc: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "image/gif")
-				w.Write([]byte("GIF89a"))
+				_, _ = w.Write([]byte("GIF89a"))
 			},
 			wantType: "gif",
 			wantData: []byte("GIF89a"),
@@ -52,7 +52,7 @@ func TestDownloadImageData(t *testing.T) {
 			name: "invalid mime type - missing slash",
 			serverFunc: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "imagepng")
-				w.Write([]byte{0x89, 0x50, 0x4E, 0x47})
+				_, _ = w.Write([]byte{0x89, 0x50, 0x4E, 0x47})
 			},
 			wantErr:    true,
 			wantErrMsg: "invalid mime type imagepng",
@@ -61,7 +61,7 @@ func TestDownloadImageData(t *testing.T) {
 			name: "invalid mime type - too many parts",
 			serverFunc: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "image/png/extra")
-				w.Write([]byte{0x89, 0x50, 0x4E, 0x47})
+				_, _ = w.Write([]byte{0x89, 0x50, 0x4E, 0x47})
 			},
 			wantErr:    true,
 			wantErrMsg: "invalid mime type image/png/extra",

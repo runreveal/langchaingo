@@ -219,7 +219,9 @@ func TestErrors(t *testing.T) {
 
 	// corrupt httprr trace
 	corruptTraceFile := makeTmpFile()
-	os.WriteFile(corruptTraceFile, []byte("httprr trace v1\ngarbage\n"), 0o666)
+	if err := os.WriteFile(corruptTraceFile, []byte("httprr trace v1\ngarbage\n"), 0o666); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := Open(corruptTraceFile, nil); err == nil || !strings.Contains(err.Error(), "corrupt httprr trace") {
 		t.Errorf("did not diagnose invalid httprr trace: err = %v", err)
 	}

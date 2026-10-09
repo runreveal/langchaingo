@@ -16,10 +16,10 @@ package httprr
 import (
 	"bufio"
 	"bytes"
-	"cmp"
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -644,7 +644,7 @@ func (rr *RecordReplay) writeLog(reqWire, respWire string) error {
 	_, err1 := fmt.Fprintf(rr.record, "%d %d\n", len(reqWire), len(respWire))
 	_, err2 := rr.record.WriteString(reqWire)
 	_, err3 := rr.record.WriteString(respWire)
-	if err := cmp.Or(err1, err2, err3); err != nil {
+	if err := errors.Join(err1, err2, err3); err != nil {
 		rr.writeErr = err
 		rr.record.Close()
 		os.Remove(rr.file)
@@ -1261,7 +1261,6 @@ func formatJSONValue(v interface{}, indent int) string {
 				// continue
 			default:
 				allNumbers = false
-				break
 			}
 		}
 

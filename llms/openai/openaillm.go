@@ -413,6 +413,7 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 // opt in explicitly.
 func (o *LLM) useResponsesAPI(opts *llms.CallOptions, model string) bool {
 	switch flavorOption(opts) {
+	case flavorAuto:
 	case flavorResponses:
 		return true
 	case flavorChatCompletions:
