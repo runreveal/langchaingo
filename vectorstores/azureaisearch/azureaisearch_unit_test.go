@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -47,7 +46,7 @@ func (m *testEmbedder) EmbedQuery(ctx context.Context, text string) ([]float32, 
 }
 
 func TestNew(t *testing.T) {
-	t.Parallel()
+	// Not parallel: subtests set process environment variables (t.Setenv).
 
 	tests := []struct {
 		name        string
@@ -115,10 +114,8 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set environment variables
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
-				defer os.Unsetenv(k)
+				t.Setenv(k, v)
 			}
 
 			store, err := New(tt.opts...)
@@ -1001,7 +998,7 @@ func TestWithOptions(t *testing.T) {
 }
 
 func TestEnvironmentVariableHandling(t *testing.T) {
-	t.Parallel()
+	// Not parallel: subtests set process environment variables (t.Setenv).
 
 	tests := []struct {
 		name        string
@@ -1051,10 +1048,8 @@ func TestEnvironmentVariableHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set environment variables
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
-				defer os.Unsetenv(k)
+				t.Setenv(k, v)
 			}
 
 			store, err := New(tt.options...)
