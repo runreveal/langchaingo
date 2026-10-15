@@ -18,6 +18,9 @@ func TestGPTVersion(t *testing.T) {
 		{model: "gpt-5.6", major: 5, minor: 6, ok: true},
 		{model: "gpt-5.5", major: 5, minor: 5, ok: true},
 		{model: "gpt-5", major: 5, minor: 0, ok: true},
+		{model: "gpt-6-astra", major: 6, minor: 0, ok: true},
+		{model: "gpt-6-sol", major: 6, minor: 0, ok: true},
+		{model: "gpt-6-luna", major: 6, minor: 0, ok: true},
 		{model: "gpt-6-orion", major: 6, minor: 0, ok: true},
 		{model: "gpt-4", major: 4, minor: 0, ok: true},
 		{model: "gpt-4-turbo", major: 4, minor: 0, ok: true},
@@ -43,6 +46,9 @@ func TestNeedsReasoningOffForTools(t *testing.T) {
 		"gpt-5.6-terra":       true,
 		"gpt-5.6-sol":         true,
 		"gpt-5.7":             true,
+		"gpt-6-astra":         true,
+		"gpt-6-sol":           true,
+		"gpt-6-luna":          true,
 		"gpt-6":               true,
 		"gpt-5.5":             false,
 		"gpt-5.4-mini":        false,
@@ -78,6 +84,11 @@ func TestMarshalReasoningEffortWithTools(t *testing.T) {
 		{
 			name:    "gpt-5.6 with deprecated functions disables reasoning",
 			request: ChatRequest{Model: "gpt-5.6-sol", Functions: []FunctionDefinition{{Name: "search"}}},
+			want:    "none",
+		},
+		{
+			name:    "gpt-6 with tools disables reasoning",
+			request: ChatRequest{Model: "gpt-6-sol", Tools: []Tool{tool}},
 			want:    "none",
 		},
 		{

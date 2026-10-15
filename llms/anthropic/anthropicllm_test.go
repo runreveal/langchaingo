@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -57,6 +58,27 @@ func TestNew(t *testing.T) {
 			}
 			if !tt.wantErr && llm == nil {
 				t.Error("New() returned nil LLM without error")
+			}
+		})
+	}
+}
+
+func TestSupportsReasoningForCurrentClaudeModels(t *testing.T) {
+	tests := []struct {
+		model string
+		want  bool
+	}{
+		{model: "claude-opus-5-5", want: true},
+		{model: "claude-sonnet-5", want: true},
+		{model: "claude-fable-5-1", want: true},
+		{model: "claude-mythos-5-1", want: true},
+		{model: "global.anthropic.claude-opus-5-5", want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			if got := supportsReasoningForModel(tt.model); got != tt.want {
+				t.Errorf("supportsReasoningForModel(%q) = %t, want %t", tt.model, got, tt.want)
 			}
 		})
 	}
@@ -421,6 +443,104 @@ func TestProcessAnthropicResponse_Compaction(t *testing.T) {
 	inputTokens, ok := choice.GenerationInfo["InputTokens"].(int)
 	if !ok || inputTokens != 180000 {
 		t.Errorf("InputTokens = %v, want 180000", choice.GenerationInfo["InputTokens"])
+	}
+}
+
+func TestProcessAnthropicResponse_AggregatesMessageBlocks(t *testing.T) {
+	tests := []struct {
+		name             string
+		content          string
+		wantText         string
+		wantThinking     string
+		wantSignature    string
+		wantToolNames    []string
+		wantOutputTokens int
+	}{
+		{
+			name:             "text only",
+			content:          `[{"type":"text","text":"answer"}]`,
+			wantText:         "answer",
+			wantOutputTokens: 6,
+		},
+		{
+			name: "thinking before text",
+			content: `[
+				{"type":"thinking","thinking":"analysis","signature":"signed"},
+				{"type":"text","text":"answer"}
+			]`,
+			wantText:         "answer",
+			wantThinking:     "analysis",
+			wantSignature:    "signed",
+			wantOutputTokens: 7,
+		},
+		{
+			name: "text and parallel tools",
+			content: `[
+				{"type":"text","text":"checking"},
+				{"type":"tool_use","id":"tool-1","name":"first","input":{"value":1}},
+				{"type":"tool_use","id":"tool-2","name":"second","input":{"value":2}}
+			]`,
+			wantText:         "checking",
+			wantToolNames:    []string{"first", "second"},
+			wantOutputTokens: 8,
+		},
+		{
+			name: "multiple text blocks",
+			content: `[
+				{"type":"text","text":"first"},
+				{"type":"text","text":" second"}
+			]`,
+			wantText:         "first second",
+			wantOutputTokens: 9,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jsonData := fmt.Sprintf(`{
+				"content": %s,
+				"id": "msg_test",
+				"model": "claude-test",
+				"role": "assistant",
+				"stop_reason": "end_turn",
+				"type": "message",
+				"usage": {"input_tokens": 5, "output_tokens": %d}
+			}`, tt.content, tt.wantOutputTokens)
+
+			var result anthropicclient.MessageResponsePayload
+			if err := result.UnmarshalJSON([]byte(jsonData)); err != nil {
+				t.Fatalf("UnmarshalJSON() error = %v", err)
+			}
+
+			resp, err := processAnthropicResponse(&result)
+			if err != nil {
+				t.Fatalf("processAnthropicResponse() error = %v", err)
+			}
+			if len(resp.Choices) != 1 {
+				t.Fatalf("len(Choices) = %d, want 1", len(resp.Choices))
+			}
+			choice := resp.Choices[0]
+			if choice.Content != tt.wantText {
+				t.Errorf("Content = %q, want %q", choice.Content, tt.wantText)
+			}
+			if got, _ := choice.GenerationInfo["ThinkingContent"].(string); got != tt.wantThinking {
+				t.Errorf("ThinkingContent = %q, want %q", got, tt.wantThinking)
+			}
+			if got, _ := choice.GenerationInfo["ThinkingSignature"].(string); got != tt.wantSignature {
+				t.Errorf("ThinkingSignature = %q, want %q", got, tt.wantSignature)
+			}
+			if got, _ := choice.GenerationInfo["OutputTokens"].(int); got != tt.wantOutputTokens {
+				t.Errorf("OutputTokens = %d, want %d", got, tt.wantOutputTokens)
+			}
+			if len(choice.ToolCalls) != len(tt.wantToolNames) {
+				t.Fatalf("len(ToolCalls) = %d, want %d", len(choice.ToolCalls), len(tt.wantToolNames))
+			}
+			for i, wantName := range tt.wantToolNames {
+				if got := choice.ToolCalls[i].FunctionCall.Name; got != wantName {
+					t.Errorf("ToolCalls[%d].Name = %q, want %q", i, got, wantName)
+				}
+			}
+		})
 	}
 }
 

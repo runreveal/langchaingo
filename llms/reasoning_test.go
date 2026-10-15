@@ -164,6 +164,9 @@ func TestIsReasoningModel(t *testing.T) {
 		// OpenAI reasoning models
 		{"gpt-5-mini", true},
 		{"gpt-5-preview", true},
+		{"gpt-6-astra", true},
+		{"gpt-6-sol", true},
+		{"gpt-6-luna", true},
 		{"o1-preview", true},
 		{"o1-mini", true},
 		{"o3-mini", true},
@@ -176,6 +179,11 @@ func TestIsReasoningModel(t *testing.T) {
 		{"claude-4", true},
 		{"claude-opus-4", true},
 		{"claude-sonnet-4", true},
+		{"claude-opus-5-5", true},
+		{"claude-sonnet-5", true},
+		{"claude-fable-5-1", true},
+		{"claude-mythos-5-1", true},
+		{"global.anthropic.claude-opus-5-5", true},
 
 		// DeepSeek reasoner
 		{"deepseek-reasoner", true},

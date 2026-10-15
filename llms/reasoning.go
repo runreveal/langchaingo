@@ -1,6 +1,9 @@
 package llms
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 // ThinkingMode represents different thinking/reasoning modes for LLMs.
 type ThinkingMode string
@@ -160,8 +163,9 @@ func DefaultIsReasoningModel(model string) bool {
 	modelLower := strings.ToLower(model)
 
 	// OpenAI reasoning models
-	if strings.HasPrefix(modelLower, "gpt-5") ||
+	if isGPTReasoningModel(modelLower) ||
 		strings.HasPrefix(modelLower, "o1-") ||
+		modelLower == "o3" ||
 		strings.HasPrefix(modelLower, "o3-") ||
 		strings.Contains(modelLower, "o1-preview") ||
 		strings.Contains(modelLower, "o1-mini") ||
@@ -175,7 +179,11 @@ func DefaultIsReasoningModel(model string) bool {
 		strings.Contains(modelLower, "claude-3.7") ||
 		strings.Contains(modelLower, "claude-4") ||
 		strings.Contains(modelLower, "claude-opus-4") ||
-		strings.Contains(modelLower, "claude-sonnet-4") {
+		strings.Contains(modelLower, "claude-sonnet-4") ||
+		strings.Contains(modelLower, "claude-opus-5") ||
+		strings.Contains(modelLower, "claude-sonnet-5") ||
+		strings.Contains(modelLower, "claude-fable-5") ||
+		strings.Contains(modelLower, "claude-mythos-5") {
 		return true
 	}
 
@@ -191,6 +199,20 @@ func DefaultIsReasoningModel(model string) bool {
 	}
 
 	return false
+}
+
+// isGPTReasoningModel reports whether model is a numerically versioned GPT
+// generation at GPT-5 or newer. Names such as gpt-4o are intentionally excluded.
+func isGPTReasoningModel(model string) bool {
+	rest, ok := strings.CutPrefix(model, "gpt-")
+	if !ok {
+		return false
+	}
+	if i := strings.IndexAny(rest, ".-"); i >= 0 {
+		rest = rest[:i]
+	}
+	major, err := strconv.Atoi(rest)
+	return err == nil && major >= 5
 }
 
 // CalculateThinkingBudget calculates the token budget based on mode and max tokens.

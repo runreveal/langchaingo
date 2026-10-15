@@ -211,11 +211,15 @@ func IsReasoningModel(model string) bool {
 	if model == "o3" || strings.HasPrefix(model, "o3-") {
 		return true
 	}
-	// GPT-5 series (when released)
-	if strings.HasPrefix(model, "gpt-5") {
+	// o4 series: o4-mini and later variants.
+	if model == "o4" || strings.HasPrefix(model, "o4-") {
 		return true
 	}
-	return false
+	// Numerically versioned GPT models from GPT-5 onward reason before
+	// answering. Parsing the version instead of matching "gpt-5" keeps newer
+	// generations such as GPT-6 on the same request path.
+	major, _, ok := gptVersion(model)
+	return ok && major >= 5
 }
 
 // ToolType is the type of a tool.

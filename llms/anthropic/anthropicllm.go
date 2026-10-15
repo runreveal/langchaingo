@@ -256,27 +256,30 @@ func processAnthropicResponse(result *anthropicclient.MessageResponsePayload) (*
 		return nil, ErrEmptyResponse
 	}
 
-	choices := make([]*llms.ContentChoice, len(result.Content))
-	for i, content := range result.Content {
+	// Anthropic content blocks are ordered parts of one assistant message, not
+	// alternative completions. Represent the message as one choice so callers do
+	// not lose text when thinking or tool-use blocks precede it.
+	choice := &llms.ContentChoice{
+		StopReason: result.StopReason,
+		GenerationInfo: map[string]any{
+			"InputTokens":              result.Usage.InputTokens,
+			"OutputTokens":             result.Usage.OutputTokens,
+			"CacheCreationInputTokens": result.Usage.CacheCreationInputTokens,
+			"CacheReadInputTokens":     result.Usage.CacheReadInputTokens,
+		},
+	}
+	var text, thinking, output strings.Builder
+	var thinkingSignature string
+
+	for _, content := range result.Content {
 		switch content.GetType() {
 		case "text":
 			if textContent, ok := content.(*anthropicclient.TextContent); ok {
 				// Extract thinking content from the response text
 				thinkingContent, outputContent := extractThinkingFromText(textContent.Text)
-
-				choices[i] = &llms.ContentChoice{
-					Content:    textContent.Text,
-					StopReason: result.StopReason,
-					GenerationInfo: map[string]any{
-						"InputTokens":              result.Usage.InputTokens,
-						"OutputTokens":             result.Usage.OutputTokens,
-						"CacheCreationInputTokens": result.Usage.CacheCreationInputTokens,
-						"CacheReadInputTokens":     result.Usage.CacheReadInputTokens,
-						// Standardized fields for cross-provider compatibility
-						"ThinkingContent": thinkingContent, // Standardized field
-						"OutputContent":   outputContent,   // Standardized field
-					},
-				}
+				text.WriteString(textContent.Text)
+				thinking.WriteString(thinkingContent)
+				output.WriteString(outputContent)
 			} else {
 				return nil, fmt.Errorf("anthropic: %w for text message", ErrInvalidContentType)
 			}
@@ -286,57 +289,29 @@ func processAnthropicResponse(result *anthropicclient.MessageResponsePayload) (*
 				if err != nil {
 					return nil, fmt.Errorf("anthropic: failed to marshal tool use arguments: %w", err)
 				}
-				choices[i] = &llms.ContentChoice{
-					ToolCalls: []llms.ToolCall{
-						{
-							ID: toolUseContent.ID,
-							FunctionCall: &llms.FunctionCall{
-								Name:      toolUseContent.Name,
-								Arguments: string(argumentsJSON),
-							},
-						},
+				choice.ToolCalls = append(choice.ToolCalls, llms.ToolCall{
+					ID: toolUseContent.ID,
+					FunctionCall: &llms.FunctionCall{
+						Name:      toolUseContent.Name,
+						Arguments: string(argumentsJSON),
 					},
-					StopReason: result.StopReason,
-					GenerationInfo: map[string]any{
-						"InputTokens":              result.Usage.InputTokens,
-						"OutputTokens":             result.Usage.OutputTokens,
-						"CacheCreationInputTokens": result.Usage.CacheCreationInputTokens,
-						"CacheReadInputTokens":     result.Usage.CacheReadInputTokens,
-					},
-				}
+				})
 			} else {
 				return nil, fmt.Errorf("anthropic: %w for tool use message %T", ErrInvalidContentType, content)
 			}
 		case "thinking":
 			if thinkingContent, ok := content.(*anthropicclient.ThinkingContent); ok {
-				choices[i] = &llms.ContentChoice{
-					Content:    "", // Thinking content is not included in output
-					StopReason: result.StopReason,
-					GenerationInfo: map[string]any{
-						"ThinkingContent":          thinkingContent.Thinking,
-						"ThinkingSignature":        thinkingContent.Signature,
-						"InputTokens":              result.Usage.InputTokens,
-						"OutputTokens":             result.Usage.OutputTokens,
-						"CacheCreationInputTokens": result.Usage.CacheCreationInputTokens,
-						"CacheReadInputTokens":     result.Usage.CacheReadInputTokens,
-					},
+				thinking.WriteString(thinkingContent.Thinking)
+				if thinkingContent.Signature != "" {
+					thinkingSignature = thinkingContent.Signature
 				}
 			} else {
 				return nil, fmt.Errorf("anthropic: %w for thinking message %T", ErrInvalidContentType, content)
 			}
 		case "compaction":
 			if compactionContent, ok := content.(*anthropicclient.CompactionContent); ok {
-				choices[i] = &llms.ContentChoice{
-					Content:    compactionContent.Content,
-					StopReason: result.StopReason,
-					GenerationInfo: map[string]any{
-						"CompactionSummary":        compactionContent.Content,
-						"InputTokens":              result.Usage.InputTokens,
-						"OutputTokens":             result.Usage.OutputTokens,
-						"CacheCreationInputTokens": result.Usage.CacheCreationInputTokens,
-						"CacheReadInputTokens":     result.Usage.CacheReadInputTokens,
-					},
-				}
+				text.WriteString(compactionContent.Content)
+				choice.GenerationInfo["CompactionSummary"] = compactionContent.Content
 			} else {
 				return nil, fmt.Errorf("anthropic: %w for compaction message %T", ErrInvalidContentType, content)
 			}
@@ -344,9 +319,15 @@ func processAnthropicResponse(result *anthropicclient.MessageResponsePayload) (*
 			return nil, fmt.Errorf("anthropic: %w: %v", ErrUnsupportedContentType, content.GetType())
 		}
 	}
+	choice.Content = text.String()
+	choice.GenerationInfo["ThinkingContent"] = thinking.String()
+	choice.GenerationInfo["OutputContent"] = output.String()
+	if thinkingSignature != "" {
+		choice.GenerationInfo["ThinkingSignature"] = thinkingSignature
+	}
 
 	return &llms.ContentResponse{
-		Choices: choices,
+		Choices: []*llms.ContentChoice{choice},
 	}, nil
 }
 
@@ -608,10 +589,12 @@ func supportsReasoningForModel(model string) bool {
 		return true
 	}
 
-	// Future Claude 5+ expected to support reasoning
+	// Claude 5 families support adaptive reasoning.
 	if strings.Contains(modelLower, "claude-5") ||
 		strings.Contains(modelLower, "claude-opus-5") ||
-		strings.Contains(modelLower, "claude-sonnet-5") {
+		strings.Contains(modelLower, "claude-sonnet-5") ||
+		strings.Contains(modelLower, "claude-fable-5") ||
+		strings.Contains(modelLower, "claude-mythos-5") {
 		return true
 	}
 
