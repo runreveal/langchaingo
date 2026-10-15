@@ -94,7 +94,13 @@ func TestCreateRedisVectorOptions(t *testing.T) {
 	testValidRedisVectorConfigs(t, ctx, redisURL, e, index)
 }
 
-func testInvalidRedisVectorConfigs(t *testing.T, ctx context.Context, redisURL string, e *embeddings.EmbedderImpl, index string) {
+func testInvalidRedisVectorConfigs(
+	t *testing.T,
+	ctx context.Context,
+	redisURL string,
+	e *embeddings.EmbedderImpl,
+	index string,
+) {
 	t.Helper()
 
 	// Missing index name

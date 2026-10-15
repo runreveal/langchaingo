@@ -16,10 +16,10 @@ package httprr
 import (
 	"bufio"
 	"bytes"
-	"cmp"
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -51,7 +51,11 @@ func init() {
 		record = flag.String("httprecord", "", "re-record traces for files matching `regexp`")
 		debug = flag.Bool("httprecord-debug", false, "enable debug output for httprr recording details")
 		httpDebug = flag.Bool("httpdebug", false, "enable HTTP request/response logging")
-		recordDelay = flag.Duration("httprecord-delay", 0, "delay between HTTP requests during recording (helps avoid rate limits)")
+		recordDelay = flag.Duration(
+			"httprecord-delay",
+			0,
+			"delay between HTTP requests during recording (helps avoid rate limits)",
+		)
 	}
 }
 
@@ -588,7 +592,10 @@ func (rr *RecordReplay) replayRoundTrip(req *http.Request, reqLog string) (*http
 				"file", rr.file,
 			)
 		}
-		return nil, fmt.Errorf("cached HTTP response not found for:\n%s\n\nHint: Re-run tests with -httprecord=. to record new HTTP interactions\nDebug flags: -httprecord-debug for recording details, -httpdebug for HTTP traffic", reqLog)
+		return nil, fmt.Errorf(
+			"cached HTTP response not found for:\n%s\n\nHint: Re-run tests with -httprecord=. to record new HTTP interactions\nDebug flags: -httprecord-debug for recording details, -httpdebug for HTTP traffic",
+			reqLog,
+		)
 	}
 
 	// Log that we found a match
@@ -644,7 +651,7 @@ func (rr *RecordReplay) writeLog(reqWire, respWire string) error {
 	_, err1 := fmt.Fprintf(rr.record, "%d %d\n", len(reqWire), len(respWire))
 	_, err2 := rr.record.WriteString(reqWire)
 	_, err3 := rr.record.WriteString(respWire)
-	if err := cmp.Or(err1, err2, err3); err != nil {
+	if err := errors.Join(err1, err2, err3); err != nil {
 		rr.writeErr = err
 		rr.record.Close()
 		os.Remove(rr.file)
@@ -1261,7 +1268,6 @@ func formatJSONValue(v interface{}, indent int) string {
 				// continue
 			default:
 				allNumbers = false
-				break
 			}
 		}
 

@@ -5,6 +5,7 @@ import (
 	"github.com/tmc/langchaingo/prompts"
 )
 
+//
 //nolint:lll
 const _defaultStuffQATemplate = `Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
@@ -23,6 +24,7 @@ We have the opportunity to refine the existing answer
 Given the new context, refine the original answer to better answer the question. 
 If the context isn't useful, return the original answer.`
 
+//
 //nolint:lll
 const _defaultMapReduceGetInformationQATemplate = `Use the following portion of a long document to see if any of the text is relevant to answer the question. 
 Return any relevant text verbatim.
@@ -30,6 +32,7 @@ Return any relevant text verbatim.
 Question: {{.question}}
 Relevant text, if any:`
 
+//
 //nolint:lll
 const _defaultMapReduceCombineQATemplate = `Given the following extracted parts of a long document and a question, create a final answer. 
 If you don't know the answer, just say that you don't know. Don't try to make up an answer.
@@ -40,6 +43,7 @@ QUESTION: {{.question}}
 =========
 FINAL ANSWER:`
 
+//
 //nolint:lll
 const _defaultMapRerankTemplate = `Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 In addition to giving an answer, also return a score of how fully it answered the user's question. This should be in the following format:

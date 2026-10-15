@@ -347,7 +347,12 @@ type streamingCompletionResponseChunk struct {
 	} `json:"message"`
 }
 
-func parseStreamingCompletionResponse(ctx context.Context, client *bedrockruntime.Client, modelInput *bedrockruntime.InvokeModelWithResponseStreamInput, options llms.CallOptions) (*llms.ContentResponse, error) {
+func parseStreamingCompletionResponse(
+	ctx context.Context,
+	client *bedrockruntime.Client,
+	modelInput *bedrockruntime.InvokeModelWithResponseStreamInput,
+	options llms.CallOptions,
+) (*llms.ContentResponse, error) {
 	output, err := client.InvokeModelWithResponseStream(ctx, modelInput)
 	if err != nil {
 		return nil, err

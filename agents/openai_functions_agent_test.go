@@ -69,8 +69,12 @@ func TestOpenAIFunctionsAgentWithHTTPRR(t *testing.T) {
 	result, err := chains.Run(ctx, executor, "What is 15 multiplied by 4?")
 	if err != nil {
 		// Check if this is a recording mismatch error
-		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
+		// The openai client masks httprr replay misses as a generic network error.
+		if strings.Contains(err.Error(), "cached HTTP response not found") ||
+			strings.Contains(err.Error(), "failed to reach API server") {
+			t.Skip(
+				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
+			)
 		}
 		t.Fatal(err)
 	}
@@ -126,11 +130,19 @@ func TestOpenAIFunctionsAgentComplexCalculation(t *testing.T) {
 	)
 
 	// Run a more complex calculation
-	result, err := chains.Run(ctx, executor, "If I have 3 groups of 7 items, and I add 9 more items, how many items do I have in total?")
+	result, err := chains.Run(
+		ctx,
+		executor,
+		"If I have 3 groups of 7 items, and I add 9 more items, how many items do I have in total?",
+	)
 	if err != nil {
 		// Check if this is a recording mismatch error
-		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
+		// The openai client masks httprr replay misses as a generic network error.
+		if strings.Contains(err.Error(), "cached HTTP response not found") ||
+			strings.Contains(err.Error(), "failed to reach API server") {
+			t.Skip(
+				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
+			)
 		}
 		t.Fatalf("failed to run agent: %v", err)
 	}

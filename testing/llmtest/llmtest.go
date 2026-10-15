@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -674,17 +675,27 @@ type MockLLM struct {
 	GenerateCount int
 	LastPrompt    string
 	LastMessages  []llms.MessageContent
+
+	mu sync.Mutex
 }
 
 // Call implements llms.Model
 func (m *MockLLM) Call(ctx context.Context, prompt string, options ...llms.CallOption) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.CallCount++
 	m.LastPrompt = prompt
 	return m.CallResponse, m.CallError
 }
 
 // GenerateContent implements llms.Model
-func (m *MockLLM) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
+func (m *MockLLM) GenerateContent(
+	ctx context.Context,
+	messages []llms.MessageContent,
+	options ...llms.CallOption,
+) (*llms.ContentResponse, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.GenerateCount++
 	m.LastMessages = messages
 
@@ -703,7 +714,11 @@ func (m *MockLLM) GenerateContent(ctx context.Context, messages []llms.MessageCo
 }
 
 // GenerateContentStream implements streaming
-func (m *MockLLM) GenerateContentStream(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (<-chan llms.ContentResponse, error) {
+func (m *MockLLM) GenerateContentStream(
+	ctx context.Context,
+	messages []llms.MessageContent,
+	options ...llms.CallOption,
+) (<-chan llms.ContentResponse, error) {
 	// Create a channel and send the mock response
 	ch := make(chan llms.ContentResponse, 1)
 

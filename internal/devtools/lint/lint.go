@@ -318,146 +318,6 @@ func fixModuleName(dir, expectedModuleName string) error {
 	return nil
 }
 
-// checkMissingReplaceDirectives checks if go.mod files have appropriate replace directives.
-// It finds all go.mod files and ensures they have a replace directive pointing to the root module.
-// This is critical for local development to ensure that changes in the root module are reflected
-// in the dependent modules without requiring publishing a new version.
-func checkMissingReplaceDirectives(fix bool) error {
-	// Find all go.mod files
-	var goModPaths []string
-	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Skip if not a go.mod file
-		if d.Name() != "go.mod" {
-			return nil
-		}
-
-		// Skip root go.mod
-		if path == "go.mod" {
-			return nil
-		}
-
-		goModPaths = append(goModPaths, path)
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	// Get root module name
-	rootModContent, err := os.ReadFile("go.mod")
-	if err != nil {
-		return fmt.Errorf("failed to read root go.mod: %w", err)
-	}
-
-	rootModName := ""
-	rootLines := strings.Split(string(rootModContent), "\n")
-	for _, line := range rootLines {
-		if strings.HasPrefix(line, "module ") {
-			rootModName = strings.TrimSpace(strings.TrimPrefix(line, "module "))
-			break
-		}
-	}
-
-	if rootModName == "" {
-		return fmt.Errorf("could not determine root module name")
-	}
-
-	if *flagVerbose {
-		log.Printf("root module name: %s", rootModName)
-		log.Printf("found %d go.mod files to check", len(goModPaths))
-	}
-
-	var errs []error
-
-	// Check each go.mod file for replace directive
-	for _, path := range goModPaths {
-		content, err := os.ReadFile(path)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("failed to read %s: %w", path, err))
-			continue
-		}
-
-		lines := strings.Split(string(content), "\n")
-
-		// Get module name from the go.mod file
-		var moduleName string
-		for _, line := range lines {
-			if strings.HasPrefix(line, "module ") {
-				moduleName = strings.TrimSpace(strings.TrimPrefix(line, "module "))
-				break
-			}
-		}
-
-		if moduleName == "" {
-			errs = append(errs, fmt.Errorf("no module declaration in %s", path))
-			continue
-		}
-
-		// Check if it already has a replace directive for the root module
-		hasReplace := false
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "replace "+rootModName+" => ") ||
-				strings.HasPrefix(line, "replace "+rootModName+" v") {
-				hasReplace = true
-				break
-			}
-		}
-
-		if !hasReplace {
-			dir := filepath.Dir(path)
-			if fix {
-				if err := fixAddReplaceDirective(dir, rootModName); err != nil {
-					errs = append(errs, err)
-				}
-			} else {
-				errs = append(errs, fmt.Errorf("missing replace directive for root module in %s", path))
-			}
-		} else if *flagVerbose {
-			log.Printf("replace directive found in %s", path)
-		}
-	}
-
-	return errors.Join(errs...)
-}
-
-// fixAddReplaceDirective adds a replace directive to the go.mod file in the specified directory.
-func fixAddReplaceDirective(dir, rootModName string) error {
-	// Calculate relative path from module to root
-	absDir, err := filepath.Abs(dir)
-	if err != nil {
-		return fmt.Errorf("failed to get absolute path for %s: %w", dir, err)
-	}
-
-	absRoot, err := filepath.Abs(".")
-	if err != nil {
-		return fmt.Errorf("failed to get absolute path for root: %w", err)
-	}
-
-	// Calculate relative path from module to root directory
-	relPath, err := filepath.Rel(absDir, absRoot)
-	if err != nil {
-		return fmt.Errorf("failed to get relative path from %s to root: %w", dir, err)
-	}
-
-	// Create the replace directive
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("cd %s && go mod edit -replace=%s=%s", dir, rootModName, relPath))
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("fixAddReplaceDirective failed for %s: %w. Output: %s", dir, err, output)
-	}
-
-	if *flagVerbose {
-		log.Printf("added replace directive in %s: %s => %s", dir, rootModName, relPath)
-	}
-
-	return nil
-}
-
 // checkNoReplaceDirectives ensures that go.mod files do NOT contain replace directives.
 // This is for pre-push checks to ensure published modules don't contain development replace directives.
 func checkNoReplaceDirectives(fix bool) error {
@@ -1172,11 +1032,14 @@ func (a *HttprrAnalyzer) checkOsGetenvUsage(call *ast.CallExpr) {
 
 				pos := a.fset.Position(call.Pos())
 				a.issues = append(a.issues, HttprrIssue{
-					File:        a.file,
-					Line:        pos.Line,
-					Type:        IssueDirectOsGetenv,
-					Description: fmt.Sprintf("direct os.Getenv(%q) call should use httprr.SkipIfNoCredentialsAndRecordingMissing", envVar),
-					Node:        call,
+					File: a.file,
+					Line: pos.Line,
+					Type: IssueDirectOsGetenv,
+					Description: fmt.Sprintf(
+						"direct os.Getenv(%q) call should use httprr.SkipIfNoCredentialsAndRecordingMissing",
+						envVar,
+					),
+					Node: call,
 				})
 			}
 		}
@@ -1624,9 +1487,13 @@ func checkArchitecturalRules(fix bool) error {
 	log.Println("8. Test HTTP Recording: All test functions making HTTP calls should use httprr.OpenForTest()")
 	log.Println("9. Test HTTP Methods: Avoid direct http.Get() calls in tests; use httprr pattern instead")
 	log.Println("10. Test HTTP Client: Avoid modifying http.DefaultClient.Transport; use httprr client replacement")
-	log.Println("11. Test Provider Constructors: HTTP-based provider constructors must use httprr.OpenForTest() for deterministic testing")
+	log.Println(
+		"11. Test Provider Constructors: HTTP-based provider constructors must use httprr.OpenForTest() for deterministic testing",
+	)
 	log.Println("12. Test API URLs: Avoid hardcoded API URLs in tests; use httprr.OpenForTest() for HTTP mocking")
-	log.Println("13. Test Httprr Bypassing: All HTTP calls should go through httprr; avoid bypassing httprr.SkipIfNoCredentialsAndRecordingMissing")
+	log.Println(
+		"13. Test Httprr Bypassing: All HTTP calls should go through httprr; avoid bypassing httprr.SkipIfNoCredentialsAndRecordingMissing",
+	)
 	log.Println("")
 
 	if fix {
@@ -2542,11 +2409,14 @@ func (a *ArchitecturalAnalyzer) checkProviderConstructorUsage(call *ast.CallExpr
 		if !a.functionUsesHttprr(currentFunc) && !a.functionSkipsHttprr(currentFunc) {
 			pos := a.fset.Position(call.Pos())
 			a.issues = append(a.issues, ArchitecturalIssue{
-				Type:    IssueTestProviderConstructorWithoutHttprr,
-				File:    a.file,
-				Line:    pos.Line,
-				Message: fmt.Sprintf("test calls %s without httprr.OpenForTest() setup - HTTP-based providers should use httprr for deterministic testing", constructorName),
-				Node:    call,
+				Type: IssueTestProviderConstructorWithoutHttprr,
+				File: a.file,
+				Line: pos.Line,
+				Message: fmt.Sprintf(
+					"test calls %s without httprr.OpenForTest() setup - HTTP-based providers should use httprr for deterministic testing",
+					constructorName,
+				),
+				Node: call,
 			})
 		}
 	}
@@ -2577,7 +2447,8 @@ func (a *ArchitecturalAnalyzer) checkTestProviderConstructors(fn *ast.FuncDecl) 
 
 	// Check if this test function bypasses httprr.SkipIfNoCredentialsAndRecordingMissing
 	// Skip internal client tests and certain unit tests that are legitimate
-	skipHttprrCheck := strings.Contains(a.file, "/internal/") && strings.Contains(a.file, "client") && strings.Contains(a.file, "_test.go")
+	skipHttprrCheck := strings.Contains(a.file, "/internal/") && strings.Contains(a.file, "client") &&
+		strings.Contains(a.file, "_test.go")
 	skipHttprrCheck = skipHttprrCheck || strings.Contains(a.file, "memory/token_buffer_test.go") // Unit test for token counting
 	skipHttprrCheck = skipHttprrCheck || strings.Contains(a.file, "_unit_test.go")               // Unit tests
 
@@ -2602,11 +2473,14 @@ func (a *ArchitecturalAnalyzer) checkTestProviderConstructors(fn *ast.FuncDecl) 
 	if !skipHttprrCheck && a.functionSkipsHttprrCheck(fn) {
 		pos := a.fset.Position(fn.Pos())
 		a.issues = append(a.issues, ArchitecturalIssue{
-			Type:    IssueTestSkipsHttprrCheck,
-			File:    a.file,
-			Line:    pos.Line,
-			Message: fmt.Sprintf("test function %s bypasses httprr.SkipIfNoCredentialsAndRecordingMissing - all HTTP calls should go through httprr", fn.Name.Name),
-			Node:    fn,
+			Type: IssueTestSkipsHttprrCheck,
+			File: a.file,
+			Line: pos.Line,
+			Message: fmt.Sprintf(
+				"test function %s bypasses httprr.SkipIfNoCredentialsAndRecordingMissing - all HTTP calls should go through httprr",
+				fn.Name.Name,
+			),
+			Node: fn,
 		})
 	}
 
@@ -2621,11 +2495,14 @@ func (a *ArchitecturalAnalyzer) checkTestProviderConstructors(fn *ast.FuncDecl) 
 	if hasProviderConstructors && !hasHttprrUsage && !skipsHttprr && !isPineconeTest {
 		pos := a.fset.Position(fn.Pos())
 		a.issues = append(a.issues, ArchitecturalIssue{
-			Type:    IssueTestProviderConstructorWithoutHttprr,
-			File:    a.file,
-			Line:    pos.Line,
-			Message: fmt.Sprintf("test function %s uses provider constructors but doesn't use httprr.OpenForTest()", fn.Name.Name),
-			Node:    fn,
+			Type: IssueTestProviderConstructorWithoutHttprr,
+			File: a.file,
+			Line: pos.Line,
+			Message: fmt.Sprintf(
+				"test function %s uses provider constructors but doesn't use httprr.OpenForTest()",
+				fn.Name.Name,
+			),
+			Node: fn,
 		})
 	}
 }

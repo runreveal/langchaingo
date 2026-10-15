@@ -88,11 +88,17 @@ func getEnvVariables(t *testing.T) EnvVariables {
 func setEngine(t *testing.T, envVariables EnvVariables) alloydbutil.PostgresEngine {
 	t.Helper()
 	ctx := context.Background()
-	pgEngine, err := alloydbutil.NewPostgresEngine(ctx,
+	pgEngine, err := alloydbutil.NewPostgresEngine(
+		ctx,
 		alloydbutil.WithUser(envVariables.Username),
 		alloydbutil.WithPassword(envVariables.Password),
 		alloydbutil.WithDatabase(envVariables.Database),
-		alloydbutil.WithAlloyDBInstance(envVariables.ProjectID, envVariables.Region, envVariables.Cluster, envVariables.Instance),
+		alloydbutil.WithAlloyDBInstance(
+			envVariables.ProjectID,
+			envVariables.Region,
+			envVariables.Cluster,
+			envVariables.Instance,
+		),
 	)
 	if err != nil {
 		t.Fatal("Could not set Engine: ", err)
@@ -166,7 +172,13 @@ func TestApplyVectorIndexAndDropIndex(t *testing.T) {
 	ctx := context.Background()
 	envVariables := getEnvVariables(t)
 	vs, cleanUpTableFn := vectorStore(t, envVariables)
-	idx := vs.NewBaseIndex("testindex", "hnsw", alloydb.CosineDistance{}, []string{}, alloydb.HNSWOptions{M: 4, EfConstruction: 16})
+	idx := vs.NewBaseIndex(
+		"testindex",
+		"hnsw",
+		alloydb.CosineDistance{},
+		[]string{},
+		alloydb.HNSWOptions{M: 4, EfConstruction: 16},
+	)
 	err := vs.ApplyVectorIndex(ctx, idx, "testindex", false)
 	if err != nil {
 		t.Fatal(err)
@@ -185,7 +197,13 @@ func TestIsValidIndex(t *testing.T) {
 	ctx := context.Background()
 	envVariables := getEnvVariables(t)
 	vs, cleanUpTableFn := vectorStore(t, envVariables)
-	idx := vs.NewBaseIndex("testindex", "hnsw", alloydb.CosineDistance{}, []string{}, alloydb.HNSWOptions{M: 4, EfConstruction: 16})
+	idx := vs.NewBaseIndex(
+		"testindex",
+		"hnsw",
+		alloydb.CosineDistance{},
+		[]string{},
+		alloydb.HNSWOptions{M: 4, EfConstruction: 16},
+	)
 	err := vs.ApplyVectorIndex(ctx, idx, "testindex", false)
 	if err != nil {
 		t.Fatal(err)

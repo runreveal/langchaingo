@@ -1,11 +1,8 @@
 name: Deploy to GitHub Pages
 
+# Manual only: this fork doesn't publish the docs site.
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'docs/**'
-      - '.github/workflows/publish-docs.yaml'
 
 permissions:
   contents: read

@@ -32,7 +32,11 @@ func NewTransform(f TransformFunc, inputVariables []string, outputVariables []st
 }
 
 // Call returns the output of the transform function.
-func (c Transform) Call(ctx context.Context, inputs map[string]any, options ...ChainCallOption) (map[string]any, error) { //nolint:lll
+func (c Transform) Call(
+	ctx context.Context,
+	inputs map[string]any,
+	options ...ChainCallOption,
+) (map[string]any, error) { //nolint:lll
 	return c.Transform(ctx, inputs, options...)
 }
 

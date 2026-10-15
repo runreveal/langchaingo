@@ -56,7 +56,11 @@ func NewMapReduceDocuments(llmChain *LLMChain, reduceChain Chain) MapReduceDocum
 }
 
 // Call handles the inner logic of the MapReduceDocuments documents chain.
-func (c MapReduceDocuments) Call(ctx context.Context, values map[string]any, options ...ChainCallOption) (map[string]any, error) { //nolint:lll
+func (c MapReduceDocuments) Call(
+	ctx context.Context,
+	values map[string]any,
+	options ...ChainCallOption,
+) (map[string]any, error) { //nolint:lll
 	// Get the documents from the input values.
 	docs, ok := values[c.InputKey].([]schema.Document)
 	if !ok {
@@ -89,7 +93,10 @@ func (c MapReduceDocuments) getInputVariable(givenInputName string, chainInputVa
 	return givenInputName
 }
 
-func (c MapReduceDocuments) maybeAddIntermediateSteps(result map[string]any, intermediateSteps []map[string]any) map[string]any { //nolint:lll
+func (c MapReduceDocuments) maybeAddIntermediateSteps(
+	result map[string]any,
+	intermediateSteps []map[string]any,
+) map[string]any { //nolint:lll
 	if !c.ReturnIntermediateSteps {
 		return result
 	}

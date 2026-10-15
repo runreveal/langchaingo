@@ -15,29 +15,6 @@ import (
 	"github.com/tmc/langchaingo/internal/httprr"
 )
 
-// setupTestClient creates a test client with httprr recording/replay
-func setupTestClient(t *testing.T, model string) *Client {
-	t.Helper()
-
-	httprr.SkipIfNoCredentialsAndRecordingMissing(t, "OPENAI_API_KEY")
-
-	rr := httprr.OpenForTest(t, http.DefaultTransport)
-
-	// Only run tests in parallel when not recording
-	if !rr.Recording() {
-		t.Parallel()
-	}
-
-	apiKey := "test-api-key"
-	if key := os.Getenv("OPENAI_API_KEY"); key != "" && rr.Recording() {
-		apiKey = key
-	}
-
-	client, err := New(apiKey, model, "", "", APITypeOpenAI, "", rr.Client(), "", nil)
-	require.NoError(t, err)
-	return client
-}
-
 func TestClient_CreateChatCompletion(t *testing.T) {
 	ctx := context.Background()
 	httprr.SkipIfNoCredentialsAndRecordingMissing(t, "OPENAI_API_KEY")
@@ -152,7 +129,18 @@ func TestClient_CreateEmbeddingWithDimensions(t *testing.T) {
 		apiKey = key
 	}
 
-	client, err := New(apiKey, "", "", "", APITypeOpenAI, "", rr.Client(), "text-embedding-3-small", nil, WithEmbeddingDimensions(256))
+	client, err := New(
+		apiKey,
+		"",
+		"",
+		"",
+		APITypeOpenAI,
+		"",
+		rr.Client(),
+		"text-embedding-3-small",
+		nil,
+		WithEmbeddingDimensions(256),
+	)
 	require.NoError(t, err)
 
 	req := &EmbeddingRequest{

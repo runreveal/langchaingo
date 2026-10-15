@@ -66,7 +66,11 @@ func (l *LLM) Call(ctx context.Context, prompt string, options ...llms.CallOptio
 }
 
 // GenerateContent implements llms.Model.
-func (l *LLM) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
+func (l *LLM) GenerateContent(
+	ctx context.Context,
+	messages []llms.MessageContent,
+	options ...llms.CallOption,
+) (*llms.ContentResponse, error) {
 	if l.CallbacksHandler != nil {
 		l.CallbacksHandler.HandleLLMGenerateContentStart(ctx, messages)
 	}

@@ -111,7 +111,12 @@ func (p *FewShotPrompt) Format(values map[string]interface{}) (string, error) {
 		if !ok {
 			strVal2, ok := v.(StringPromptValue)
 			if !ok {
-				return "", fmt.Errorf("%w: variable %q has type %T, expected string or StringPromptValue", ErrInvalidPartialVariableType, k, v)
+				return "", fmt.Errorf(
+					"%w: variable %q has type %T, expected string or StringPromptValue",
+					ErrInvalidPartialVariableType,
+					k,
+					v,
+				)
 			}
 			strVal = strVal2.String()
 		}

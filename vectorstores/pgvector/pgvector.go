@@ -201,7 +201,11 @@ func (s Store) createEmbeddingTableIfNotExists(ctx context.Context, tx pgx.Tx) e
 	if _, err := tx.Exec(ctx, sql); err != nil {
 		return err
 	}
-	sql = fmt.Sprintf(`CREATE INDEX IF NOT EXISTS %s_collection_id ON %s (collection_id)`, s.embeddingTableName, s.embeddingTableName)
+	sql = fmt.Sprintf(
+		`CREATE INDEX IF NOT EXISTS %s_collection_id ON %s (collection_id)`,
+		s.embeddingTableName,
+		s.embeddingTableName,
+	)
 	if _, err := tx.Exec(ctx, sql); err != nil {
 		return err
 	}

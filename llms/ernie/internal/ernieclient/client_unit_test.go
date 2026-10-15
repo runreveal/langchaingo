@@ -945,9 +945,7 @@ func TestErrorScenarios(t *testing.T) {
 
 				// Use a nil context to potentially cause issues
 				defer func() {
-					if r := recover(); r != nil {
-						// Expected panic from nil context
-					}
+					_ = recover() // Expected panic from nil context
 				}()
 
 				_, _ = client.CreateCompletion(nil, "", &CompletionRequest{}) //nolint:staticcheck

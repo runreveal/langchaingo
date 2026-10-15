@@ -39,7 +39,11 @@ func (l *testLanguageModel) Call(ctx context.Context, prompt string, options ...
 	return llms.GenerateFromSinglePrompt(ctx, l, prompt, options...)
 }
 
-func (l *testLanguageModel) GenerateContent(_ context.Context, mc []llms.MessageContent, _ ...llms.CallOption) (*llms.ContentResponse, error) { //nolint: lll, cyclop, whitespace
+func (l *testLanguageModel) GenerateContent(
+	_ context.Context,
+	mc []llms.MessageContent,
+	_ ...llms.CallOption,
+) (*llms.ContentResponse, error) { //nolint: lll, cyclop, whitespace
 	part0 := mc[0].Parts[0]
 	var prompt string
 	if tc, ok := part0.(llms.TextContent); ok {

@@ -127,7 +127,12 @@ func (s Store) AddDocuments(ctx context.Context,
 
 // SimilaritySearch creates a vector embedding from the query using the embedder
 // and queries to find the most similar documents.
-func (s Store) SimilaritySearch(ctx context.Context, query string, numDocuments int, options ...vectorstores.Option) ([]schema.Document, error) { //nolint:lll
+func (s Store) SimilaritySearch(
+	ctx context.Context,
+	query string,
+	numDocuments int,
+	options ...vectorstores.Option,
+) ([]schema.Document, error) { //nolint:lll
 	opts := s.getOptions(options...)
 
 	nameSpace := s.getNameSpace(opts)
@@ -177,7 +182,10 @@ func (s Store) SimilaritySearch(ctx context.Context, query string, numDocuments 
 	return s.getDocumentsFromMatches(queryResult, scoreThreshold)
 }
 
-func (s Store) getDocumentsFromMatches(queryResult *pinecone.QueryVectorsResponse, scoreThreshold float32) ([]schema.Document, error) {
+func (s Store) getDocumentsFromMatches(
+	queryResult *pinecone.QueryVectorsResponse,
+	scoreThreshold float32,
+) ([]schema.Document, error) {
 	resultDocuments := make([]schema.Document, 0)
 	for _, match := range queryResult.Matches {
 		metadata := match.Vector.Metadata.AsMap()

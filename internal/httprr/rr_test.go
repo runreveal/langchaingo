@@ -219,7 +219,9 @@ func TestErrors(t *testing.T) {
 
 	// corrupt httprr trace
 	corruptTraceFile := makeTmpFile()
-	os.WriteFile(corruptTraceFile, []byte("httprr trace v1\ngarbage\n"), 0o666)
+	if err := os.WriteFile(corruptTraceFile, []byte("httprr trace v1\ngarbage\n"), 0o666); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := Open(corruptTraceFile, nil); err == nil || !strings.Contains(err.Error(), "corrupt httprr trace") {
 		t.Errorf("did not diagnose invalid httprr trace: err = %v", err)
 	}
@@ -239,7 +241,8 @@ func TestErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp, err := rr.Client().Post("http://127.0.0.1/nonexist", "x/error", iotest.ErrReader(errors.New("MY ERROR"))); err == nil || !strings.Contains(err.Error(), "MY ERROR") {
+	if resp, err := rr.Client().Post("http://127.0.0.1/nonexist", "x/error", iotest.ErrReader(errors.New("MY ERROR"))); err == nil ||
+		!strings.Contains(err.Error(), "MY ERROR") {
 		if resp != nil {
 			resp.Body.Close()
 		}
@@ -356,7 +359,8 @@ func TestErrors(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
-	if resp, err := rr.Client().Get("http://127.0.0.1/myrequest"); err == nil || !strings.Contains(err.Error(), "corrupt httprr trace:") {
+	if resp, err := rr.Client().Get("http://127.0.0.1/myrequest"); err == nil ||
+		!strings.Contains(err.Error(), "corrupt httprr trace:") {
 		if resp != nil {
 			resp.Body.Close()
 		}

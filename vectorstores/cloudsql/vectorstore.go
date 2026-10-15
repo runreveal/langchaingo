@@ -113,7 +113,10 @@ func (vs *VectorStore) AddDocuments(ctx context.Context, docs []schema.Document,
 	return ids, nil
 }
 
-func (vs *VectorStore) generateAddDocumentsQuery(id, content, embedding string, metadata map[string]any) (string, []any, error) {
+func (vs *VectorStore) generateAddDocumentsQuery(
+	id, content, embedding string,
+	metadata map[string]any,
+) (string, []any, error) {
 	// Construct metadata column names if present
 	metadataColNames := ""
 	if len(vs.metadataColumns) > 0 {
@@ -155,7 +158,12 @@ func (vs *VectorStore) generateAddDocumentsQuery(id, content, embedding string, 
 
 // SimilaritySearch performs a similarity search on the database using the
 // query vector.
-func (vs *VectorStore) SimilaritySearch(ctx context.Context, query string, _ int, options ...vectorstores.Option) ([]schema.Document, error) {
+func (vs *VectorStore) SimilaritySearch(
+	ctx context.Context,
+	query string,
+	_ int,
+	options ...vectorstores.Option,
+) ([]schema.Document, error) {
 	opts := applyOpts(options...)
 	var documents []schema.Document
 	embedding, err := vs.embedder.EmbedQuery(ctx, query)
@@ -306,8 +314,12 @@ func (vs *VectorStore) IsValidIndex(ctx context.Context, indexName string) (bool
 	if indexName == "" {
 		indexName = vs.tableName + defaultIndexNameSuffix
 	}
-	query := fmt.Sprintf("SELECT tablename, indexname  FROM pg_indexes WHERE tablename = '%s' AND schemaname = '%s' AND indexname = '%s';",
-		vs.tableName, vs.schemaName, indexName)
+	query := fmt.Sprintf(
+		"SELECT tablename, indexname  FROM pg_indexes WHERE tablename = '%s' AND schemaname = '%s' AND indexname = '%s';",
+		vs.tableName,
+		vs.schemaName,
+		indexName,
+	)
 	var tablename, indexnameFromDB string
 	err := vs.engine.Pool.QueryRow(ctx, query).Scan(&tablename, &indexnameFromDB)
 	if err != nil {
@@ -317,7 +329,12 @@ func (vs *VectorStore) IsValidIndex(ctx context.Context, indexName string) (bool
 	return indexnameFromDB == indexName, nil
 }
 
-func (*VectorStore) NewBaseIndex(indexName, indexType string, strategy distanceStrategy, partialIndexes []string, opts Index) BaseIndex {
+func (*VectorStore) NewBaseIndex(
+	indexName, indexType string,
+	strategy distanceStrategy,
+	partialIndexes []string,
+	opts Index,
+) BaseIndex {
 	return BaseIndex{
 		name:             indexName,
 		indexType:        indexType,

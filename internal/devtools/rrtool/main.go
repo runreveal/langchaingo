@@ -36,7 +36,7 @@ func checkCmd() {
 	fs := flag.NewFlagSet("check", flag.ExitOnError)
 	dirFlag := fs.String("dir", ".", "directory to process")
 
-	fs.Parse(os.Args[2:])
+	_ = fs.Parse(os.Args[2:]) // ExitOnError: Parse exits on failure
 
 	fmt.Printf("Checking httprr file compression status in %s...\n", *dirFlag)
 
@@ -80,7 +80,7 @@ func listPackagesCmd() {
 	dirFlag := fs.String("dir", ".", "directory to process")
 	formatFlag := fs.String("format", "paths", "output format: 'paths' or 'command'")
 
-	fs.Parse(os.Args[2:])
+	_ = fs.Parse(os.Args[2:]) // ExitOnError: Parse exits on failure
 
 	packages, err := findPackagesWithHttprr(*dirFlag)
 	if err != nil {

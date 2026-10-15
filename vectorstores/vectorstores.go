@@ -11,7 +11,12 @@ import (
 // form of vector embeddings.
 type VectorStore interface {
 	AddDocuments(ctx context.Context, docs []schema.Document, options ...Option) ([]string, error)
-	SimilaritySearch(ctx context.Context, query string, numDocuments int, options ...Option) ([]schema.Document, error) //nolint:lll
+	SimilaritySearch(
+		ctx context.Context,
+		query string,
+		numDocuments int,
+		options ...Option,
+	) ([]schema.Document, error) //nolint:lll
 }
 
 // Retriever is a retriever for vector stores.

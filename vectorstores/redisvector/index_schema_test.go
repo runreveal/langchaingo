@@ -92,12 +92,28 @@ func TestSchemaAsCommand(t *testing.T) {
 		},
 		{
 			"TextField: with all keys",
-			TextField{Name: "text", As: "_text", Weight: 0.6, NoIndex: true, Sortable: true, NoStem: true, WithSuffixtrie: true, PhoneticMatcher: "dm:en"},
+			TextField{
+				Name:            "text",
+				As:              "_text",
+				Weight:          0.6,
+				NoIndex:         true,
+				Sortable:        true,
+				NoStem:          true,
+				WithSuffixtrie:  true,
+				PhoneticMatcher: "dm:en",
+			},
 			"text AS _text TEXT WEIGHT 0.6 PHONETIC dm:en WITHSUFFIXTRIE NOSTEM NOINDEX SORTABLE",
 		},
 		{
 			"TextField: with invalid enum value",
-			TextField{Name: "text", NoIndex: true, Sortable: true, NoStem: true, WithSuffixtrie: true, PhoneticMatcher: "invalid enum"},
+			TextField{
+				Name:            "text",
+				NoIndex:         true,
+				Sortable:        true,
+				NoStem:          true,
+				WithSuffixtrie:  true,
+				PhoneticMatcher: "invalid enum",
+			},
 			"text TEXT WITHSUFFIXTRIE NOSTEM NOINDEX SORTABLE",
 		},
 		{
@@ -112,7 +128,15 @@ func TestSchemaAsCommand(t *testing.T) {
 		},
 		{
 			"VectorField: FLAT vector with all keys",
-			VectorField{Name: "vector", As: "_vector", Algorithm: FlatVectorAlgorithm, Dims: 1024, DistanceMetric: L2DistanceMetric, Datatype: FLOAT64VectorDataType, BlockSize: 100},
+			VectorField{
+				Name:           "vector",
+				As:             "_vector",
+				Algorithm:      FlatVectorAlgorithm,
+				Dims:           1024,
+				DistanceMetric: L2DistanceMetric,
+				Datatype:       FLOAT64VectorDataType,
+				BlockSize:      100,
+			},
 			"vector AS _vector VECTOR FLAT 8 TYPE FLOAT64 DIM 1024 DISTANCE_METRIC L2 BLOCK_SIZE 100",
 		},
 		{
@@ -122,12 +146,29 @@ func TestSchemaAsCommand(t *testing.T) {
 		},
 		{
 			"VectorField: HNSW vector with all keys",
-			VectorField{Name: "vector", As: "_vector", Algorithm: HNSWVectorAlgorithm, Dims: 1024, DistanceMetric: CosineDistanceMetric, Datatype: FLOAT64VectorDataType, M: 10, EfConstruction: 100, EfRuntime: 1000, Epsilon: 0.5},
+			VectorField{
+				Name:           "vector",
+				As:             "_vector",
+				Algorithm:      HNSWVectorAlgorithm,
+				Dims:           1024,
+				DistanceMetric: CosineDistanceMetric,
+				Datatype:       FLOAT64VectorDataType,
+				M:              10,
+				EfConstruction: 100,
+				EfRuntime:      1000,
+				Epsilon:        0.5,
+			},
 			"vector AS _vector VECTOR HNSW 14 TYPE FLOAT64 DIM 1024 DISTANCE_METRIC COSINE M 10 EF_CONSTRUCTION 100 EF_RUNTIME 1000 EPSILON 0.5",
 		},
 		{
 			"VectorField: HNSW vector with basic keys",
-			VectorField{Name: "vector", Algorithm: HNSWVectorAlgorithm, Dims: 1024, DistanceMetric: CosineDistanceMetric, Datatype: FLOAT32VectorDataType},
+			VectorField{
+				Name:           "vector",
+				Algorithm:      HNSWVectorAlgorithm,
+				Dims:           1024,
+				DistanceMetric: CosineDistanceMetric,
+				Datatype:       FLOAT32VectorDataType,
+			},
 			"vector VECTOR HNSW 6 TYPE FLOAT32 DIM 1024 DISTANCE_METRIC COSINE",
 		},
 	}

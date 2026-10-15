@@ -434,7 +434,12 @@ func convertSchemaRecursive(schemaMap map[string]any, toolIndex int, propertyPat
 		for propName, propValue := range propMap {
 			valueMap, ok := propValue.(map[string]any)
 			if !ok {
-				return nil, fmt.Errorf("tool [%d], property [%s.%s]: expect to find a value map", toolIndex, propertyPath, propName)
+				return nil, fmt.Errorf(
+					"tool [%d], property [%s.%s]: expect to find a value map",
+					toolIndex,
+					propertyPath,
+					propName,
+				)
 			}
 
 			nestedPath := propName

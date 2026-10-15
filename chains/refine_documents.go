@@ -57,7 +57,11 @@ func NewRefineDocuments(initialLLMChain, refineLLMChain *LLMChain) RefineDocumen
 }
 
 // Call handles the inner logic of the refine documents chain.
-func (c RefineDocuments) Call(ctx context.Context, values map[string]any, options ...ChainCallOption) (map[string]any, error) { //nolint:lll
+func (c RefineDocuments) Call(
+	ctx context.Context,
+	values map[string]any,
+	options ...ChainCallOption,
+) (map[string]any, error) { //nolint:lll
 	// Get the documents to be combined.
 	docs, ok := values[c.InputKey].([]schema.Document)
 	if !ok {
@@ -107,7 +111,11 @@ func (c RefineDocuments) constructInitialInputs(doc schema.Document, rest map[st
 	return c.getBaseInputs(doc, rest)
 }
 
-func (c RefineDocuments) constructRefineInputs(doc schema.Document, lastResponse string, rest map[string]any) (map[string]any, error) { //nolint:lll
+func (c RefineDocuments) constructRefineInputs(
+	doc schema.Document,
+	lastResponse string,
+	rest map[string]any,
+) (map[string]any, error) { //nolint:lll
 	inputs, err := c.getBaseInputs(doc, rest)
 	if err != nil {
 		return nil, err

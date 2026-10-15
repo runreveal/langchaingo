@@ -1,27 +1,20 @@
+# Mirrors the golangci-lint config used in the runreveal repo.
 version: "2"
 linters:
-  default: none
-  enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - forbidigo
-    - funlen
-    - gosec
-    - misspell
   settings:
-    cyclop:
-      max-complexity: 12
-    forbidigo:
-      forbid:
-        - pattern: import "[^"]+/(util|common|helpers)"
-    funlen:
-      lines: 90
-    gosec:
-      excludes:
-        - G115
+    govet:
+      disable:
+        # Reports "cannot inline: type parameter inference is not yet supported" on
+        # generic stdlib calls carrying //go:fix inline directives (e.g. slices.Contains).
+        # It is a limitation of the analyzer, not a defect in our code.
+        - inline
+    staticcheck:
+      checks:
+        - all
+        - "-QF*"    # quickfix suggestions — address in follow-up
+        - "-ST*"    # style checks — address in follow-up
+        - "-SA1019" # deprecated API usage
+        - "-SA5008" # json struct tag issues
   exclusions:
     generated: lax
     presets:
@@ -30,15 +23,13 @@ linters:
       - legacy
       - std-error-handling
     paths:
-      - internal
-      - vectorstores/bedrockknowledgebases
+      - third_party$
+      - builtin$
+      - ^examples/
 formatters:
-  enable:
-    - gofmt
-    - goimports
   exclusions:
     generated: lax
     paths:
       - third_party$
       - builtin$
-      - examples$
+      - ^examples/

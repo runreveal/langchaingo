@@ -66,7 +66,11 @@ func (m *Model) Call(ctx context.Context, prompt string, options ...llms.CallOpt
 }
 
 // GenerateContent implements the langchaingo llms.Model interface.
-func (m *Model) GenerateContent(ctx context.Context, langchainMessages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
+func (m *Model) GenerateContent(
+	ctx context.Context,
+	langchainMessages []llms.MessageContent,
+	options ...llms.CallOption,
+) (*llms.ContentResponse, error) {
 	callOptions := resolveDefaultOptions(sdk.DefaultChatRequestParams, m.clientOptions)
 	setCallOptions(options, callOptions)
 	m.CallbacksHandler.HandleLLMGenerateContentStart(ctx, langchainMessages)
@@ -143,7 +147,13 @@ func mistralChatParamsFromCallOptions(callOpts *llms.CallOptions) sdk.ChatReques
 	return chatOpts
 }
 
-func generateNonStreamingContent(ctx context.Context, m *Model, callOptions *llms.CallOptions, messages []sdk.ChatMessage, chatOpts sdk.ChatRequestParams) (*llms.ContentResponse, error) {
+func generateNonStreamingContent(
+	ctx context.Context,
+	m *Model,
+	callOptions *llms.CallOptions,
+	messages []sdk.ChatMessage,
+	chatOpts sdk.ChatRequestParams,
+) (*llms.ContentResponse, error) {
 	res, err := m.client.Chat(callOptions.Model, messages, &chatOpts)
 	m.CallbacksHandler.HandleLLMGenerateContentEnd(ctx, nil)
 	if err != nil {
@@ -153,7 +163,9 @@ func generateNonStreamingContent(ctx context.Context, m *Model, callOptions *llm
 
 	if len(res.Choices) < 1 {
 		m.CallbacksHandler.HandleLLMError(ctx, err)
-		return nil, errors.New("unexpected response from Mistral SDK, length of the Choices slice must be greater than or equal 1")
+		return nil, errors.New(
+			"unexpected response from Mistral SDK, length of the Choices slice must be greater than or equal 1",
+		)
 	}
 
 	langchainContentResponse := &llms.ContentResponse{
@@ -173,14 +185,17 @@ func generateNonStreamingContent(ctx context.Context, m *Model, callOptions *llm
 		if len(toolCalls) > 0 {
 			langchainContentResponse.Choices[idx].FuncCall = (*llms.FunctionCall)(&toolCalls[0].Function)
 			for _, tool := range toolCalls {
-				langchainContentResponse.Choices[0].ToolCalls = append(langchainContentResponse.Choices[0].ToolCalls, llms.ToolCall{
-					ID:   tool.Id,
-					Type: string(tool.Type),
-					FunctionCall: &llms.FunctionCall{
-						Name:      tool.Function.Name,
-						Arguments: tool.Function.Arguments,
+				langchainContentResponse.Choices[0].ToolCalls = append(
+					langchainContentResponse.Choices[0].ToolCalls,
+					llms.ToolCall{
+						ID:   tool.Id,
+						Type: string(tool.Type),
+						FunctionCall: &llms.FunctionCall{
+							Name:      tool.Function.Name,
+							Arguments: tool.Function.Arguments,
+						},
 					},
-				})
+				)
 			}
 		}
 	}
@@ -189,7 +204,13 @@ func generateNonStreamingContent(ctx context.Context, m *Model, callOptions *llm
 	return langchainContentResponse, nil
 }
 
-func generateStreamingContent(ctx context.Context, m *Model, callOptions *llms.CallOptions, messages []sdk.ChatMessage, chatOpts sdk.ChatRequestParams) (*llms.ContentResponse, error) {
+func generateStreamingContent(
+	ctx context.Context,
+	m *Model,
+	callOptions *llms.CallOptions,
+	messages []sdk.ChatMessage,
+	chatOpts sdk.ChatRequestParams,
+) (*llms.ContentResponse, error) {
 	chatResChan, err := m.client.ChatStream(callOptions.Model, messages, &chatOpts)
 	if err != nil {
 		m.CallbacksHandler.HandleLLMError(ctx, err)
@@ -216,14 +237,17 @@ func generateStreamingContent(ctx context.Context, m *Model, callOptions *llms.C
 				if len(choice.Delta.ToolCalls) > 0 {
 					langchainContentResponse.Choices[0].FuncCall = (*llms.FunctionCall)(&choice.Delta.ToolCalls[0].Function)
 					for _, tool := range choice.Delta.ToolCalls {
-						langchainContentResponse.Choices[0].ToolCalls = append(langchainContentResponse.Choices[0].ToolCalls, llms.ToolCall{
-							ID:   tool.Id,
-							Type: string(tool.Type),
-							FunctionCall: &llms.FunctionCall{
-								Name:      tool.Function.Name,
-								Arguments: tool.Function.Arguments,
+						langchainContentResponse.Choices[0].ToolCalls = append(
+							langchainContentResponse.Choices[0].ToolCalls,
+							llms.ToolCall{
+								ID:   tool.Id,
+								Type: string(tool.Type),
+								FunctionCall: &llms.FunctionCall{
+									Name:      tool.Function.Name,
+									Arguments: tool.Function.Arguments,
+								},
 							},
-						})
+						)
 					}
 				}
 			}

@@ -19,7 +19,11 @@ func TestMapError(t *testing.T) {
 	}{
 		{"throttling", "operation error Bedrock: InvokeModel, ThrottlingException: Too many requests", llms.ErrCodeRateLimit},
 		{"access denied", "AccessDeniedException: not authorized to perform bedrock:InvokeModel", llms.ErrCodeAuthentication},
-		{"expired token", "ExpiredTokenException: the security token included in the request is expired", llms.ErrCodeAuthentication},
+		{
+			"expired token",
+			"ExpiredTokenException: the security token included in the request is expired",
+			llms.ErrCodeAuthentication,
+		},
 		{"model not found", "ResourceNotFoundException: could not find model", llms.ErrCodeResourceNotFound},
 		{"model not ready", "ModelNotReadyException: model is not ready", llms.ErrCodeProviderUnavailable},
 		{"service unavailable", "ServiceUnavailableException: try again later", llms.ErrCodeProviderUnavailable},

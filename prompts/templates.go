@@ -203,7 +203,13 @@ func RenderTemplate(tmpl string, tmplFormat TemplateFormat, values map[string]an
 // - Jinja2: include, extends, import, from statements
 // - Go templates: ParseFS functionality for template inheritance
 // - F-strings: File reading from the specified filesystem
-func RenderTemplateFS(fsys fs.FS, name string, tmplFormat TemplateFormat, values map[string]any, opts ...RenderOption) (string, error) {
+func RenderTemplateFS(
+	fsys fs.FS,
+	name string,
+	tmplFormat TemplateFormat,
+	values map[string]any,
+	opts ...RenderOption,
+) (string, error) {
 	// Apply options
 	cfg := applyOptions(opts)
 

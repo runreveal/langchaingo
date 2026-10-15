@@ -166,7 +166,9 @@ func TestFunctionCall(t *testing.T) {
 		{
 			Name:        "getCurrentWeather",
 			Description: "Get the current weather in a given location",
-			Parameters:  json.RawMessage(`{"type": "object", "properties": {"location": {"type": "string", "description": "The city and state, e.g. San Francisco, CA"}, "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}}, "required": ["location"]}`),
+			Parameters: json.RawMessage(
+				`{"type": "object", "properties": {"location": {"type": "string", "description": "The city and state, e.g. San Francisco, CA"}, "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}}, "required": ["location"]}`,
+			),
 		},
 	}
 
