@@ -66,7 +66,13 @@ func createPool(ctx context.Context, cfg engineConfig, usingIAMAuth bool) (*pgxp
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse connection config: %w", err)
 	}
-	instanceURI := fmt.Sprintf("projects/%s/locations/%s/clusters/%s/instances/%s", cfg.projectID, cfg.region, cfg.cluster, cfg.instance)
+	instanceURI := fmt.Sprintf(
+		"projects/%s/locations/%s/clusters/%s/instances/%s",
+		cfg.projectID,
+		cfg.region,
+		cfg.cluster,
+		cfg.instance,
+	)
 	config.ConnConfig.DialFunc = func(ctx context.Context, _ string, _ string) (net.Conn, error) {
 		if cfg.ipType == "PRIVATE" {
 			return d.Dial(ctx, instanceURI, alloydbconn.WithPrivateIP())

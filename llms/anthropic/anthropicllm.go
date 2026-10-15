@@ -16,8 +16,10 @@ import (
 )
 
 var (
-	ErrEmptyResponse            = errors.New("no response")
-	ErrMissingToken             = errors.New("missing the Anthropic API key, set it in the ANTHROPIC_API_KEY environment variable")
+	ErrEmptyResponse = errors.New("no response")
+	ErrMissingToken  = errors.New(
+		"missing the Anthropic API key, set it in the ANTHROPIC_API_KEY environment variable",
+	)
 	ErrUnexpectedResponseLength = errors.New("unexpected length of response")
 	ErrInvalidContentType       = errors.New("invalid content type")
 	ErrUnsupportedMessageType   = errors.New("unsupported message type")
@@ -81,7 +83,11 @@ func (o *LLM) Call(ctx context.Context, prompt string, options ...llms.CallOptio
 }
 
 // GenerateContent implements the Model interface.
-func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
+func (o *LLM) GenerateContent(
+	ctx context.Context,
+	messages []llms.MessageContent,
+	options ...llms.CallOption,
+) (*llms.ContentResponse, error) {
 	if o.CallbacksHandler != nil {
 		o.CallbacksHandler.HandleLLMGenerateContentStart(ctx, messages)
 	}
@@ -97,7 +103,12 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 	return generateMessagesContent(ctx, o, messages, opts)
 }
 
-func generateCompletionsContent(ctx context.Context, o *LLM, messages []llms.MessageContent, opts *llms.CallOptions) (*llms.ContentResponse, error) {
+func generateCompletionsContent(
+	ctx context.Context,
+	o *LLM,
+	messages []llms.MessageContent,
+	opts *llms.CallOptions,
+) (*llms.ContentResponse, error) {
 	if len(messages) == 0 || len(messages[0].Parts) == 0 {
 		return nil, ErrEmptyResponse
 	}
@@ -135,7 +146,12 @@ func generateCompletionsContent(ctx context.Context, o *LLM, messages []llms.Mes
 	return resp, nil
 }
 
-func generateMessagesContent(ctx context.Context, o *LLM, messages []llms.MessageContent, opts *llms.CallOptions) (*llms.ContentResponse, error) {
+func generateMessagesContent(
+	ctx context.Context,
+	o *LLM,
+	messages []llms.MessageContent,
+	opts *llms.CallOptions,
+) (*llms.ContentResponse, error) {
 	chatMessages, systemPrompt, err := processMessages(messages)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: failed to process messages: %w", err)

@@ -40,7 +40,10 @@ func (f *LLM) GenerateContent(_ context.Context, _ []llms.MessageContent, _ ...l
 
 // Call  the model with a prompt.
 func (f *LLM) Call(ctx context.Context, prompt string, options ...llms.CallOption) (string, error) {
-	resp, err := f.GenerateContent(ctx, []llms.MessageContent{{Role: llms.ChatMessageTypeHuman, Parts: []llms.ContentPart{llms.TextContent{Text: prompt}}}}, options...)
+	resp, err := f.GenerateContent(
+		ctx,
+		[]llms.MessageContent{{Role: llms.ChatMessageTypeHuman, Parts: []llms.ContentPart{llms.TextContent{Text: prompt}}}},
+		options...)
 	if err != nil {
 		return "", err
 	}

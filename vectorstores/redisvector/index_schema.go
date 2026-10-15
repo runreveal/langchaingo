@@ -92,7 +92,7 @@ func (f TagField) AsCommand() []string {
 
 type TextField struct {
 	Name            string
-	As              string              `json:"as,omitempty" yaml:"as,omitempty"`
+	As              string              `json:"as,omitempty"               yaml:"as,omitempty"`
 	Weight          float32             // default=1
 	NoStem          bool                `json:"no_stem,omitempty"          yaml:"no_stem,omitempty"`
 	WithSuffixtrie  bool                `json:"withsuffixtrie,omitempty"   yaml:"withsuffixtrie,omitempty"`
@@ -111,7 +111,9 @@ func (f TextField) AsCommand() []string {
 	if f.Weight != 0 && f.Weight != 1 {
 		argsOut = append(argsOut, "WEIGHT", strconv.FormatFloat(float64(f.Weight), 'f', -1, 32))
 	}
-	if f.PhoneticMatcher == PhoneticDoubleMetaphoneEnglish || f.PhoneticMatcher == PhoneticDoubleMetaphoneFrench || f.PhoneticMatcher == PhoneticDoubleMetaphonePortuguese || f.PhoneticMatcher == PhoneticDoubleMetaphoneSpanish {
+	if f.PhoneticMatcher == PhoneticDoubleMetaphoneEnglish || f.PhoneticMatcher == PhoneticDoubleMetaphoneFrench ||
+		f.PhoneticMatcher == PhoneticDoubleMetaphonePortuguese ||
+		f.PhoneticMatcher == PhoneticDoubleMetaphoneSpanish {
 		argsOut = append(argsOut, "PHONETIC", string(f.PhoneticMatcher))
 	}
 	if f.WithSuffixtrie {
@@ -191,7 +193,8 @@ func (f VectorField) AsCommand() []string {
 		argsOut = append(argsOut, "DIM", "128")
 	}
 
-	if f.DistanceMetric == CosineDistanceMetric || f.DistanceMetric == L2DistanceMetric || f.DistanceMetric == IPDistanceMetric {
+	if f.DistanceMetric == CosineDistanceMetric || f.DistanceMetric == L2DistanceMetric ||
+		f.DistanceMetric == IPDistanceMetric {
 		argsOut = append(argsOut, "DISTANCE_METRIC", string(f.DistanceMetric))
 	} else {
 		argsOut = append(argsOut, "DISTANCE_METRIC", string(CosineDistanceMetric))

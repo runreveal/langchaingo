@@ -351,7 +351,11 @@ func TestMistralChatParamsFromCallOptions(t *testing.T) {
 			t.Errorf("mistralChatParamsFromCallOptions() Tool Type = %v, want %v", result.Tools[0].Type, "function")
 		}
 		if result.Tools[0].Function.Name != "get_weather" {
-			t.Errorf("mistralChatParamsFromCallOptions() Function Name = %v, want %v", result.Tools[0].Function.Name, "get_weather")
+			t.Errorf(
+				"mistralChatParamsFromCallOptions() Function Name = %v, want %v",
+				result.Tools[0].Function.Name,
+				"get_weather",
+			)
 		}
 	})
 
@@ -379,7 +383,11 @@ func TestMistralChatParamsFromCallOptions(t *testing.T) {
 			t.Errorf("mistralChatParamsFromCallOptions() Tools length = %v, want %v", len(result.Tools), 1)
 		}
 		if result.Tools[0].Function.Name != "calculate" {
-			t.Errorf("mistralChatParamsFromCallOptions() Function Name = %v, want %v", result.Tools[0].Function.Name, "calculate")
+			t.Errorf(
+				"mistralChatParamsFromCallOptions() Function Name = %v, want %v",
+				result.Tools[0].Function.Name,
+				"calculate",
+			)
 		}
 	})
 }

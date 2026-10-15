@@ -1032,11 +1032,14 @@ func (a *HttprrAnalyzer) checkOsGetenvUsage(call *ast.CallExpr) {
 
 				pos := a.fset.Position(call.Pos())
 				a.issues = append(a.issues, HttprrIssue{
-					File:        a.file,
-					Line:        pos.Line,
-					Type:        IssueDirectOsGetenv,
-					Description: fmt.Sprintf("direct os.Getenv(%q) call should use httprr.SkipIfNoCredentialsAndRecordingMissing", envVar),
-					Node:        call,
+					File: a.file,
+					Line: pos.Line,
+					Type: IssueDirectOsGetenv,
+					Description: fmt.Sprintf(
+						"direct os.Getenv(%q) call should use httprr.SkipIfNoCredentialsAndRecordingMissing",
+						envVar,
+					),
+					Node: call,
 				})
 			}
 		}
@@ -1484,9 +1487,13 @@ func checkArchitecturalRules(fix bool) error {
 	log.Println("8. Test HTTP Recording: All test functions making HTTP calls should use httprr.OpenForTest()")
 	log.Println("9. Test HTTP Methods: Avoid direct http.Get() calls in tests; use httprr pattern instead")
 	log.Println("10. Test HTTP Client: Avoid modifying http.DefaultClient.Transport; use httprr client replacement")
-	log.Println("11. Test Provider Constructors: HTTP-based provider constructors must use httprr.OpenForTest() for deterministic testing")
+	log.Println(
+		"11. Test Provider Constructors: HTTP-based provider constructors must use httprr.OpenForTest() for deterministic testing",
+	)
 	log.Println("12. Test API URLs: Avoid hardcoded API URLs in tests; use httprr.OpenForTest() for HTTP mocking")
-	log.Println("13. Test Httprr Bypassing: All HTTP calls should go through httprr; avoid bypassing httprr.SkipIfNoCredentialsAndRecordingMissing")
+	log.Println(
+		"13. Test Httprr Bypassing: All HTTP calls should go through httprr; avoid bypassing httprr.SkipIfNoCredentialsAndRecordingMissing",
+	)
 	log.Println("")
 
 	if fix {
@@ -2402,11 +2409,14 @@ func (a *ArchitecturalAnalyzer) checkProviderConstructorUsage(call *ast.CallExpr
 		if !a.functionUsesHttprr(currentFunc) && !a.functionSkipsHttprr(currentFunc) {
 			pos := a.fset.Position(call.Pos())
 			a.issues = append(a.issues, ArchitecturalIssue{
-				Type:    IssueTestProviderConstructorWithoutHttprr,
-				File:    a.file,
-				Line:    pos.Line,
-				Message: fmt.Sprintf("test calls %s without httprr.OpenForTest() setup - HTTP-based providers should use httprr for deterministic testing", constructorName),
-				Node:    call,
+				Type: IssueTestProviderConstructorWithoutHttprr,
+				File: a.file,
+				Line: pos.Line,
+				Message: fmt.Sprintf(
+					"test calls %s without httprr.OpenForTest() setup - HTTP-based providers should use httprr for deterministic testing",
+					constructorName,
+				),
+				Node: call,
 			})
 		}
 	}
@@ -2437,7 +2447,8 @@ func (a *ArchitecturalAnalyzer) checkTestProviderConstructors(fn *ast.FuncDecl) 
 
 	// Check if this test function bypasses httprr.SkipIfNoCredentialsAndRecordingMissing
 	// Skip internal client tests and certain unit tests that are legitimate
-	skipHttprrCheck := strings.Contains(a.file, "/internal/") && strings.Contains(a.file, "client") && strings.Contains(a.file, "_test.go")
+	skipHttprrCheck := strings.Contains(a.file, "/internal/") && strings.Contains(a.file, "client") &&
+		strings.Contains(a.file, "_test.go")
 	skipHttprrCheck = skipHttprrCheck || strings.Contains(a.file, "memory/token_buffer_test.go") // Unit test for token counting
 	skipHttprrCheck = skipHttprrCheck || strings.Contains(a.file, "_unit_test.go")               // Unit tests
 
@@ -2462,11 +2473,14 @@ func (a *ArchitecturalAnalyzer) checkTestProviderConstructors(fn *ast.FuncDecl) 
 	if !skipHttprrCheck && a.functionSkipsHttprrCheck(fn) {
 		pos := a.fset.Position(fn.Pos())
 		a.issues = append(a.issues, ArchitecturalIssue{
-			Type:    IssueTestSkipsHttprrCheck,
-			File:    a.file,
-			Line:    pos.Line,
-			Message: fmt.Sprintf("test function %s bypasses httprr.SkipIfNoCredentialsAndRecordingMissing - all HTTP calls should go through httprr", fn.Name.Name),
-			Node:    fn,
+			Type: IssueTestSkipsHttprrCheck,
+			File: a.file,
+			Line: pos.Line,
+			Message: fmt.Sprintf(
+				"test function %s bypasses httprr.SkipIfNoCredentialsAndRecordingMissing - all HTTP calls should go through httprr",
+				fn.Name.Name,
+			),
+			Node: fn,
 		})
 	}
 
@@ -2481,11 +2495,14 @@ func (a *ArchitecturalAnalyzer) checkTestProviderConstructors(fn *ast.FuncDecl) 
 	if hasProviderConstructors && !hasHttprrUsage && !skipsHttprr && !isPineconeTest {
 		pos := a.fset.Position(fn.Pos())
 		a.issues = append(a.issues, ArchitecturalIssue{
-			Type:    IssueTestProviderConstructorWithoutHttprr,
-			File:    a.file,
-			Line:    pos.Line,
-			Message: fmt.Sprintf("test function %s uses provider constructors but doesn't use httprr.OpenForTest()", fn.Name.Name),
-			Node:    fn,
+			Type: IssueTestProviderConstructorWithoutHttprr,
+			File: a.file,
+			Line: pos.Line,
+			Message: fmt.Sprintf(
+				"test function %s uses provider constructors but doesn't use httprr.OpenForTest()",
+				fn.Name.Name,
+			),
+			Node: fn,
 		})
 	}
 }

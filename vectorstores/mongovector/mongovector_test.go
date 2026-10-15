@@ -235,7 +235,14 @@ func createTestStore(t *testing.T, env *testEnv, dim int, index string) Store {
 // 2. Checks if the index already exists (for test reruns)
 // 3. Creates the index if needed
 // 4. Waits for the index to become queryable (eventual consistency)
-func createIndexForCollection(t *testing.T, ctx context.Context, coll *mongo.Collection, idx string, dim int, filters []string) {
+func createIndexForCollection(
+	t *testing.T,
+	ctx context.Context,
+	coll *mongo.Collection,
+	idx string,
+	dim int,
+	filters []string,
+) {
 	t.Helper()
 
 	// Probe Atlas Search service readiness by trying to list indexes

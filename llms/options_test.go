@@ -308,7 +308,12 @@ func TestWithTools(t *testing.T) {
 			t.Errorf("Tool[%d].Function.Name = %v, want %v", i, opts.Tools[i].Function.Name, tool.Function.Name)
 		}
 		if opts.Tools[i].Function.Description != tool.Function.Description {
-			t.Errorf("Tool[%d].Function.Description = %v, want %v", i, opts.Tools[i].Function.Description, tool.Function.Description)
+			t.Errorf(
+				"Tool[%d].Function.Description = %v, want %v",
+				i,
+				opts.Tools[i].Function.Description,
+				tool.Function.Description,
+			)
 		}
 		if opts.Tools[i].Function.Strict != tool.Function.Strict {
 			t.Errorf("Tool[%d].Function.Strict = %v, want %v", i, opts.Tools[i].Function.Strict, tool.Function.Strict)

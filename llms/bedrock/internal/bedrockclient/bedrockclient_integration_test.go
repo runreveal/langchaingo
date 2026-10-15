@@ -22,14 +22,22 @@ type mockBedrockClient struct {
 	invokeWithStreamFunc func(ctx context.Context, params *bedrockruntime.InvokeModelWithResponseStreamInput, optFns ...func(*bedrockruntime.Options)) (*bedrockruntime.InvokeModelWithResponseStreamOutput, error)
 }
 
-func (m *mockBedrockClient) InvokeModel(ctx context.Context, params *bedrockruntime.InvokeModelInput, optFns ...func(*bedrockruntime.Options)) (*bedrockruntime.InvokeModelOutput, error) {
+func (m *mockBedrockClient) InvokeModel(
+	ctx context.Context,
+	params *bedrockruntime.InvokeModelInput,
+	optFns ...func(*bedrockruntime.Options),
+) (*bedrockruntime.InvokeModelOutput, error) {
 	if m.invokeFunc != nil {
 		return m.invokeFunc(ctx, params, optFns...)
 	}
 	return nil, errors.New("InvokeModel not configured")
 }
 
-func (m *mockBedrockClient) InvokeModelWithResponseStream(ctx context.Context, params *bedrockruntime.InvokeModelWithResponseStreamInput, optFns ...func(*bedrockruntime.Options)) (*bedrockruntime.InvokeModelWithResponseStreamOutput, error) {
+func (m *mockBedrockClient) InvokeModelWithResponseStream(
+	ctx context.Context,
+	params *bedrockruntime.InvokeModelWithResponseStreamInput,
+	optFns ...func(*bedrockruntime.Options),
+) (*bedrockruntime.InvokeModelWithResponseStreamOutput, error) {
 	if m.invokeWithStreamFunc != nil {
 		return m.invokeWithStreamFunc(ctx, params, optFns...)
 	}
@@ -376,7 +384,13 @@ func TestClient_CreateCompletion(t *testing.T) {
 }
 
 // Helper function to test CreateCompletion with our mock
-func testCreateCompletionWithMock(ctx context.Context, client *mockBedrockClient, modelID string, messages []Message, options llms.CallOptions) (*llms.ContentResponse, error) {
+func testCreateCompletionWithMock(
+	ctx context.Context,
+	client *mockBedrockClient,
+	modelID string,
+	messages []Message,
+	options llms.CallOptions,
+) (*llms.ContentResponse, error) {
 	provider := getProvider(modelID)
 	switch provider {
 	case "ai21":
@@ -796,7 +810,13 @@ func TestClient_CreateCompletion_StreamingCancellation(t *testing.T) {
 
 // Helper functions to test provider-specific completion methods with our mock
 
-func testCreateAi21CompletionWithMock(ctx context.Context, client *mockBedrockClient, modelID string, messages []Message, options llms.CallOptions) (*llms.ContentResponse, error) {
+func testCreateAi21CompletionWithMock(
+	ctx context.Context,
+	client *mockBedrockClient,
+	modelID string,
+	messages []Message,
+	options llms.CallOptions,
+) (*llms.ContentResponse, error) {
 	// This mimics the behavior of createAi21Completion but uses our mock
 	txt := processInputMessagesGeneric(messages)
 	input := ai21TextGenerationInput{
@@ -861,7 +881,13 @@ func testCreateAi21CompletionWithMock(ctx context.Context, client *mockBedrockCl
 	}, nil
 }
 
-func testCreateAmazonCompletionWithMock(ctx context.Context, client *mockBedrockClient, modelID string, messages []Message, options llms.CallOptions) (*llms.ContentResponse, error) {
+func testCreateAmazonCompletionWithMock(
+	ctx context.Context,
+	client *mockBedrockClient,
+	modelID string,
+	messages []Message,
+	options llms.CallOptions,
+) (*llms.ContentResponse, error) {
 	txt := processInputMessagesGeneric(messages)
 	input := amazonTextGenerationInput{
 		InputText: txt,
@@ -917,7 +943,13 @@ func testCreateAmazonCompletionWithMock(ctx context.Context, client *mockBedrock
 	}, nil
 }
 
-func testCreateAnthropicCompletionWithMock(ctx context.Context, client *mockBedrockClient, modelID string, messages []Message, options llms.CallOptions) (*llms.ContentResponse, error) {
+func testCreateAnthropicCompletionWithMock(
+	ctx context.Context,
+	client *mockBedrockClient,
+	modelID string,
+	messages []Message,
+	options llms.CallOptions,
+) (*llms.ContentResponse, error) {
 	inputContents, systemPrompt, err := processInputMessagesAnthropic(messages)
 	if err != nil {
 		return nil, err
@@ -985,7 +1017,13 @@ func testCreateAnthropicCompletionWithMock(ctx context.Context, client *mockBedr
 	}, nil
 }
 
-func testCreateCohereCompletionWithMock(ctx context.Context, client *mockBedrockClient, modelID string, messages []Message, options llms.CallOptions) (*llms.ContentResponse, error) {
+func testCreateCohereCompletionWithMock(
+	ctx context.Context,
+	client *mockBedrockClient,
+	modelID string,
+	messages []Message,
+	options llms.CallOptions,
+) (*llms.ContentResponse, error) {
 	txt := processInputMessagesGeneric(messages)
 	input := &cohereTextGenerationInput{
 		Prompt:         txt,
@@ -1037,7 +1075,13 @@ func testCreateCohereCompletionWithMock(ctx context.Context, client *mockBedrock
 	}, nil
 }
 
-func testCreateMetaCompletionWithMock(ctx context.Context, client *mockBedrockClient, modelID string, messages []Message, options llms.CallOptions) (*llms.ContentResponse, error) {
+func testCreateMetaCompletionWithMock(
+	ctx context.Context,
+	client *mockBedrockClient,
+	modelID string,
+	messages []Message,
+	options llms.CallOptions,
+) (*llms.ContentResponse, error) {
 	txt := processInputMessagesGeneric(messages)
 	input := &metaTextGenerationInput{
 		Prompt:      txt,
@@ -1086,7 +1130,11 @@ func testCreateMetaCompletionWithMock(ctx context.Context, client *mockBedrockCl
 }
 
 // Helper function to test streaming response parsing
-func testParseStreamingCompletionResponse(ctx context.Context, stream *mockEventStream, options llms.CallOptions) *llms.ContentResponse {
+func testParseStreamingCompletionResponse(
+	ctx context.Context,
+	stream *mockEventStream,
+	options llms.CallOptions,
+) *llms.ContentResponse {
 	contentchoices := []*llms.ContentChoice{{GenerationInfo: map[string]interface{}{}}}
 
 	for e := range stream.Events() {

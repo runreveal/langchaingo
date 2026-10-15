@@ -105,7 +105,13 @@ func (s IndexVectorSearch) AsCommand() []string {
 	if s.scoreThreshold > 0 && s.scoreThreshold < 1 {
 		// Range search
 		// "@content_vector:[VECTOR_RANGE $distance_threshold $vector]=>{$yield_distance_as: distance}"
-		filter := fmt.Sprintf("@%s:[VECTOR_RANGE $%s $%s]=>{$yield_distance_as: %s}", vectorKey, disThresholdField, vectorField, vectorFieldAs)
+		filter := fmt.Sprintf(
+			"@%s:[VECTOR_RANGE $%s $%s]=>{$yield_distance_as: %s}",
+			vectorKey,
+			disThresholdField,
+			vectorField,
+			vectorFieldAs,
+		)
 		if len(s.preFilters) > 0 {
 			filter = fmt.Sprintf("(%s) %s", s.preFilters, filter)
 		}

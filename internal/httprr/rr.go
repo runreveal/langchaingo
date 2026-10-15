@@ -51,7 +51,11 @@ func init() {
 		record = flag.String("httprecord", "", "re-record traces for files matching `regexp`")
 		debug = flag.Bool("httprecord-debug", false, "enable debug output for httprr recording details")
 		httpDebug = flag.Bool("httpdebug", false, "enable HTTP request/response logging")
-		recordDelay = flag.Duration("httprecord-delay", 0, "delay between HTTP requests during recording (helps avoid rate limits)")
+		recordDelay = flag.Duration(
+			"httprecord-delay",
+			0,
+			"delay between HTTP requests during recording (helps avoid rate limits)",
+		)
 	}
 }
 
@@ -588,7 +592,10 @@ func (rr *RecordReplay) replayRoundTrip(req *http.Request, reqLog string) (*http
 				"file", rr.file,
 			)
 		}
-		return nil, fmt.Errorf("cached HTTP response not found for:\n%s\n\nHint: Re-run tests with -httprecord=. to record new HTTP interactions\nDebug flags: -httprecord-debug for recording details, -httpdebug for HTTP traffic", reqLog)
+		return nil, fmt.Errorf(
+			"cached HTTP response not found for:\n%s\n\nHint: Re-run tests with -httprecord=. to record new HTTP interactions\nDebug flags: -httprecord-debug for recording details, -httpdebug for HTTP traffic",
+			reqLog,
+		)
 	}
 
 	// Log that we found a match

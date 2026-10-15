@@ -13,8 +13,10 @@ import (
 )
 
 var (
-	ErrEmptyResponse            = errors.New("empty response")
-	ErrMissingToken             = errors.New("missing the Hugging Face API token. Set it in the HF_TOKEN or HUGGINGFACEHUB_API_TOKEN environment variable, or save it to ~/.cache/huggingface/token") //nolint:lll
+	ErrEmptyResponse = errors.New("empty response")
+	ErrMissingToken  = errors.New(
+		"missing the Hugging Face API token. Set it in the HF_TOKEN or HUGGINGFACEHUB_API_TOKEN environment variable, or save it to ~/.cache/huggingface/token",
+	) //nolint:lll
 	ErrUnexpectedResponseLength = errors.New("unexpected length of response")
 )
 
@@ -31,7 +33,11 @@ func (o *LLM) Call(ctx context.Context, prompt string, options ...llms.CallOptio
 }
 
 // GenerateContent implements the Model interface.
-func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) { //nolint: lll, cyclop, whitespace
+func (o *LLM) GenerateContent(
+	ctx context.Context,
+	messages []llms.MessageContent,
+	options ...llms.CallOption,
+) (*llms.ContentResponse, error) { //nolint: lll, cyclop, whitespace
 
 	if o.CallbacksHandler != nil {
 		o.CallbacksHandler.HandleLLMGenerateContentStart(ctx, messages)

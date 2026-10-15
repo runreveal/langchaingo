@@ -303,7 +303,11 @@ func (c *Client) CreateChat(ctx context.Context, r *ChatRequest) (*ChatResponse,
 	return resp, nil
 }
 
-func parseStreamingCompletionResponse(ctx context.Context, resp *http.Response, req *CompletionRequest) (*Completion, error) { // nolint:lll
+func parseStreamingCompletionResponse(
+	ctx context.Context,
+	resp *http.Response,
+	req *CompletionRequest,
+) (*Completion, error) { // nolint:lll
 	scanner := bufio.NewScanner(resp.Body)
 	responseChan := make(chan *Completion)
 	go func() {

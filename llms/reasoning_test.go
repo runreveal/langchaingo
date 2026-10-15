@@ -336,7 +336,11 @@ func (m *MockLLMWithThinking) Call(ctx context.Context, prompt string, options .
 	return "test response with thinking", nil
 }
 
-func (m *MockLLMWithThinking) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
+func (m *MockLLMWithThinking) GenerateContent(
+	ctx context.Context,
+	messages []llms.MessageContent,
+	options ...llms.CallOption,
+) (*llms.ContentResponse, error) {
 	var opts llms.CallOptions
 	for _, opt := range options {
 		opt(&opts)

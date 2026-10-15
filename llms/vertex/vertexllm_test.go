@@ -126,7 +126,10 @@ func TestGenerateContent_GlobalLocation(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		gotHost = r.Host
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprint(w, `{"id":"m","type":"message","role":"assistant","content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn","usage":{}}`)
+		_, _ = fmt.Fprint(
+			w,
+			`{"id":"m","type":"message","role":"assistant","content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn","usage":{}}`,
+		)
 	}
 	srv := httptest.NewServer(http.HandlerFunc(handler))
 	t.Cleanup(srv.Close)
@@ -288,7 +291,10 @@ func TestGenerateContent_SystemAndUserMessages(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(body, &gotReq)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprint(w, `{"id":"m","type":"message","role":"assistant","content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn","usage":{}}`)
+		_, _ = fmt.Fprint(
+			w,
+			`{"id":"m","type":"message","role":"assistant","content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn","usage":{}}`,
+		)
 	}
 
 	llm := newFakeVertex(t, "claude-3-7-sonnet@20250219", handler)

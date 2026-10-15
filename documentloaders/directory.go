@@ -151,7 +151,10 @@ func (l *RecursiveDirectoryLoader) Load(ctx context.Context) ([]schema.Document,
 }
 
 // LoadAndSplit loads from a source and splits the documents using a text splitter.
-func (l *RecursiveDirectoryLoader) LoadAndSplit(ctx context.Context, splitter textsplitter.TextSplitter) ([]schema.Document, error) {
+func (l *RecursiveDirectoryLoader) LoadAndSplit(
+	ctx context.Context,
+	splitter textsplitter.TextSplitter,
+) ([]schema.Document, error) {
 	docs, err := l.Load(ctx)
 	if err != nil {
 		return nil, err

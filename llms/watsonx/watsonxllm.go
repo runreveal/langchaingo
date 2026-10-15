@@ -29,7 +29,11 @@ func (wx *LLM) Call(ctx context.Context, prompt string, options ...llms.CallOpti
 }
 
 // GenerateContent implements the Model interface.
-func (wx *LLM) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) { //nolint: lll, cyclop, whitespace
+func (wx *LLM) GenerateContent(
+	ctx context.Context,
+	messages []llms.MessageContent,
+	options ...llms.CallOption,
+) (*llms.ContentResponse, error) { //nolint: lll, cyclop, whitespace
 
 	if wx.CallbacksHandler != nil {
 		wx.CallbacksHandler.HandleLLMGenerateContentStart(ctx, messages)

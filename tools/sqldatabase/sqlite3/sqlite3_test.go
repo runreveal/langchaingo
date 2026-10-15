@@ -26,11 +26,17 @@ func Test(t *testing.T) {
 	tmpDB, err := sql.Open("sqlite3", dsn+"?cache=shared")
 	require.NoError(t, err)
 
-	_, err = tmpDB.Exec("CREATE TABLE `Activity` (\n  `Id` int,\n  `StringId` text,\n  `Note` text,\n  `TimeType` text,\n  `DayOfWeek` text,\n  `Year` text,\n  `Month` text,\n  `Day` text,\n  `Hour` text,\n  `Minute` text,\n  `Second` text,\n  `Duration` int\n) ") //nolint:lll
+	_, err = tmpDB.Exec(
+		"CREATE TABLE `Activity` (\n  `Id` int,\n  `StringId` text,\n  `Note` text,\n  `TimeType` text,\n  `DayOfWeek` text,\n  `Year` text,\n  `Month` text,\n  `Day` text,\n  `Hour` text,\n  `Minute` text,\n  `Second` text,\n  `Duration` int\n) ",
+	) //nolint:lll
 	require.NoError(t, err)
-	_, err = tmpDB.Exec("CREATE TABLE `Activity1` (\n  `Id` int,\n  `StringId` text,\n  `Note` text,\n  `TimeType` text,\n  `DayOfWeek` text,\n  `Year` text,\n  `Month` text,\n  `Day` text,\n  `Hour` text,\n  `Minute` text,\n  `Second` text,\n  `Duration` int\n)  ") //nolint:lll
+	_, err = tmpDB.Exec(
+		"CREATE TABLE `Activity1` (\n  `Id` int,\n  `StringId` text,\n  `Note` text,\n  `TimeType` text,\n  `DayOfWeek` text,\n  `Year` text,\n  `Month` text,\n  `Day` text,\n  `Hour` text,\n  `Minute` text,\n  `Second` text,\n  `Duration` int\n)  ",
+	) //nolint:lll
 	require.NoError(t, err)
-	_, err = tmpDB.Exec("CREATE TABLE `Activity2` (\n  `Id` int,\n  `StringId` text,\n  `Note` text,\n  `TimeType` text,\n  `DayOfWeek` text,\n  `Year` text,\n  `Month` text,\n  `Day` text,\n  `Hour` text,\n  `Minute` text,\n  `Second` text,\n  `Duration` int\n)  ") //nolint:lll
+	_, err = tmpDB.Exec(
+		"CREATE TABLE `Activity2` (\n  `Id` int,\n  `StringId` text,\n  `Note` text,\n  `TimeType` text,\n  `DayOfWeek` text,\n  `Year` text,\n  `Month` text,\n  `Day` text,\n  `Hour` text,\n  `Minute` text,\n  `Second` text,\n  `Duration` int\n)  ",
+	) //nolint:lll
 	require.NoError(t, err)
 	tmpDB.Close()
 

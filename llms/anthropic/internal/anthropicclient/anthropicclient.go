@@ -195,7 +195,12 @@ func (c *Client) do(ctx context.Context, path string, payloadBytes []byte) (*htt
 	return c.doWithHeaders(ctx, path, payloadBytes, nil)
 }
 
-func (c *Client) doWithHeaders(ctx context.Context, path string, payloadBytes []byte, betaHeaders []string) (*http.Response, error) {
+func (c *Client) doWithHeaders(
+	ctx context.Context,
+	path string,
+	payloadBytes []byte,
+	betaHeaders []string,
+) (*http.Response, error) {
 	if c.baseURL == "" {
 		c.baseURL = DefaultBaseURL
 	}

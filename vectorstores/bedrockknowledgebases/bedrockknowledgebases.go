@@ -20,16 +20,44 @@ import (
 )
 
 type bedrockAgentAPI interface {
-	GetKnowledgeBase(ctx context.Context, params *bedrockagent.GetKnowledgeBaseInput, optFns ...func(*bedrockagent.Options)) (*bedrockagent.GetKnowledgeBaseOutput, error)
-	ListDataSources(ctx context.Context, params *bedrockagent.ListDataSourcesInput, optFns ...func(*bedrockagent.Options)) (*bedrockagent.ListDataSourcesOutput, error)
-	GetDataSource(ctx context.Context, params *bedrockagent.GetDataSourceInput, optFns ...func(*bedrockagent.Options)) (*bedrockagent.GetDataSourceOutput, error)
-	IngestKnowledgeBaseDocuments(ctx context.Context, params *bedrockagent.IngestKnowledgeBaseDocumentsInput, optFns ...func(*bedrockagent.Options)) (*bedrockagent.IngestKnowledgeBaseDocumentsOutput, error)
-	StartIngestionJob(ctx context.Context, params *bedrockagent.StartIngestionJobInput, optFns ...func(*bedrockagent.Options)) (*bedrockagent.StartIngestionJobOutput, error)
-	GetIngestionJob(ctx context.Context, params *bedrockagent.GetIngestionJobInput, optFns ...func(*bedrockagent.Options)) (*bedrockagent.GetIngestionJobOutput, error)
+	GetKnowledgeBase(
+		ctx context.Context,
+		params *bedrockagent.GetKnowledgeBaseInput,
+		optFns ...func(*bedrockagent.Options),
+	) (*bedrockagent.GetKnowledgeBaseOutput, error)
+	ListDataSources(
+		ctx context.Context,
+		params *bedrockagent.ListDataSourcesInput,
+		optFns ...func(*bedrockagent.Options),
+	) (*bedrockagent.ListDataSourcesOutput, error)
+	GetDataSource(
+		ctx context.Context,
+		params *bedrockagent.GetDataSourceInput,
+		optFns ...func(*bedrockagent.Options),
+	) (*bedrockagent.GetDataSourceOutput, error)
+	IngestKnowledgeBaseDocuments(
+		ctx context.Context,
+		params *bedrockagent.IngestKnowledgeBaseDocumentsInput,
+		optFns ...func(*bedrockagent.Options),
+	) (*bedrockagent.IngestKnowledgeBaseDocumentsOutput, error)
+	StartIngestionJob(
+		ctx context.Context,
+		params *bedrockagent.StartIngestionJobInput,
+		optFns ...func(*bedrockagent.Options),
+	) (*bedrockagent.StartIngestionJobOutput, error)
+	GetIngestionJob(
+		ctx context.Context,
+		params *bedrockagent.GetIngestionJobInput,
+		optFns ...func(*bedrockagent.Options),
+	) (*bedrockagent.GetIngestionJobOutput, error)
 }
 
 type bedrockAgentRuntimeAPI interface {
-	Retrieve(ctx context.Context, params *bedrockagentruntime.RetrieveInput, optFns ...func(*bedrockagentruntime.Options)) (*bedrockagentruntime.RetrieveOutput, error)
+	Retrieve(
+		ctx context.Context,
+		params *bedrockagentruntime.RetrieveInput,
+		optFns ...func(*bedrockagentruntime.Options),
+	) (*bedrockagentruntime.RetrieveOutput, error)
 }
 
 type s3Config struct {
@@ -81,7 +109,11 @@ type NamedDocument struct {
 	Document schema.Document
 }
 
-func (kb *KnowledgeBase) AddDocuments(ctx context.Context, docs []schema.Document, options ...vectorstores.Option) ([]string, error) {
+func (kb *KnowledgeBase) AddDocuments(
+	ctx context.Context,
+	docs []schema.Document,
+	options ...vectorstores.Option,
+) ([]string, error) {
 	namedDocs := make([]NamedDocument, len(docs))
 	for i, doc := range docs {
 		namedDocs[i] = NamedDocument{
@@ -92,7 +124,11 @@ func (kb *KnowledgeBase) AddDocuments(ctx context.Context, docs []schema.Documen
 	return kb.addDocuments(ctx, namedDocs, options...)
 }
 
-func (kb *KnowledgeBase) AddNamedDocuments(ctx context.Context, docs []NamedDocument, options ...vectorstores.Option) ([]string, error) {
+func (kb *KnowledgeBase) AddNamedDocuments(
+	ctx context.Context,
+	docs []NamedDocument,
+	options ...vectorstores.Option,
+) ([]string, error) {
 	return kb.addDocuments(ctx, docs, options...)
 }
 
@@ -131,7 +167,11 @@ func (kb *KnowledgeBase) filterMetadata(docs []NamedDocument) {
 	}
 }
 
-func (kb *KnowledgeBase) addDocuments(ctx context.Context, docs []NamedDocument, options ...vectorstores.Option) ([]string, error) {
+func (kb *KnowledgeBase) addDocuments(
+	ctx context.Context,
+	docs []NamedDocument,
+	options ...vectorstores.Option,
+) ([]string, error) {
 	opts := kb.getOptions(options...)
 
 	kb.filterMetadata(docs)

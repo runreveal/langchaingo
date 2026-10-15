@@ -190,7 +190,11 @@ func (c *Client) createChat(ctx context.Context, payload *ChatRequest) (*ChatRes
 	return &response, json.NewDecoder(r.Body).Decode(&response)
 }
 
-func parseStreamingChatResponse(ctx context.Context, r *http.Response, payload *ChatRequest) (*ChatResponse, error) { //nolint:cyclop,lll
+func parseStreamingChatResponse(
+	ctx context.Context,
+	r *http.Response,
+	payload *ChatRequest,
+) (*ChatResponse, error) { //nolint:cyclop,lll
 	scanner := bufio.NewScanner(r.Body)
 	responseChan := make(chan StreamedChatResponsePayload)
 	go func() {

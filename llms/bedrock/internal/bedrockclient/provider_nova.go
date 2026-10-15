@@ -121,7 +121,11 @@ const (
 	NovaMessageTypeImage = "image"
 )
 
-func novaInputToJSON(inputContents []*novaTextGenerationInputMessage, systemPrompt string, options llms.CallOptions) ([]byte, error) {
+func novaInputToJSON(
+	inputContents []*novaTextGenerationInputMessage,
+	systemPrompt string,
+	options llms.CallOptions,
+) ([]byte, error) {
 	input := novaTextGenerationInput{
 		Messages: inputContents,
 		InferenceConfig: novaInferenceConfigInput{

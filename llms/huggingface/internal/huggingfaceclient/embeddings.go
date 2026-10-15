@@ -15,7 +15,12 @@ type embeddingPayload struct {
 }
 
 // nolint:lll
-func (c *Client) createEmbedding(ctx context.Context, model string, task string, payload *embeddingPayload) ([][]float32, error) {
+func (c *Client) createEmbedding(
+	ctx context.Context,
+	model string,
+	task string,
+	payload *embeddingPayload,
+) ([][]float32, error) {
 	body := map[string]any{
 		"inputs": payload.Inputs,
 	}

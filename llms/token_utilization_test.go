@@ -16,7 +16,11 @@ func (m *MockLLMWithTokenUsage) Call(ctx context.Context, prompt string, options
 	return "test response", nil
 }
 
-func (m *MockLLMWithTokenUsage) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
+func (m *MockLLMWithTokenUsage) GenerateContent(
+	ctx context.Context,
+	messages []llms.MessageContent,
+	options ...llms.CallOption,
+) (*llms.ContentResponse, error) {
 	generationInfo := map[string]any{
 		"CompletionTokens": 50,
 		"PromptTokens":     100,

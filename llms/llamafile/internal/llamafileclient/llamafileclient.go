@@ -285,7 +285,9 @@ func ExtractJSONFromBytes(input []byte) ([]byte, error) {
 	inputStr := string(input)
 
 	if inputStr == "" {
-		return nil, errors.New("input is empty") // return error if input is empty but not is trated like error when use stream true the server return empty string in the interval
+		return nil, errors.New(
+			"input is empty",
+		) // return error if input is empty but not is trated like error when use stream true the server return empty string in the interval
 	}
 
 	// Trim the prefix "data: " from the string
