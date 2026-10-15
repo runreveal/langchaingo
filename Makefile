@@ -40,7 +40,7 @@ test:
 GO_TOOL := go tool -modfile=tools.mod
 GOLANG_CI := $(GO_TOOL) golangci-lint
 GOLINES := $(GO_TOOL) golines
-GO_FILES := find . -name "*.go" -not -path "./examples/*" -print0
+GO_FILES := find . -name "*.go" -not -path "./examples/*" -not -path "./docs/*" -print0
 
 .PHONY: lint
 lint: fmtcheck
