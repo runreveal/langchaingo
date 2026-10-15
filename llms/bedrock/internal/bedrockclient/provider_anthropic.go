@@ -272,10 +272,9 @@ const (
 // Beta flag and strategy for threshold-triggered server-side compaction.
 // Ref: https://docs.aws.amazon.com/bedrock/latest/userguide/claude-messages-compaction.html
 const (
-	AnthropicBetaCompaction        = "compact-2026-01-12"
-	anthropicCompactionStrategy    = "compact_20260112"
-	anthropicMinCompactionTrigger  = 50_000
-	anthropicDefaultCompactTrigger = 150_000
+	AnthropicBetaCompaction       = "compact-2026-01-12"
+	anthropicCompactionStrategy   = "compact_20260112"
+	anthropicMinCompactionTrigger = 50_000
 )
 
 // Call-option metadata keys read by the Anthropic provider.
@@ -287,8 +286,9 @@ const (
 // CompactionConfig configures server-side context compaction for Claude models
 // on Bedrock (compact_20260112, Claude 4.6+).
 type CompactionConfig struct {
-	// TriggerTokens is the input-token count that triggers compaction. Zero uses
-	// the API default (150k); values below the 50k minimum are raised to it.
+	// TriggerTokens is the input-token count that triggers compaction. Zero sends
+	// no trigger, so Bedrock applies its own default (150k at the time of writing);
+	// values below the 50k minimum are raised to it.
 	TriggerTokens int
 	// Instructions replaces the default summarization prompt entirely.
 	Instructions string
@@ -388,19 +388,18 @@ func buildAnthropicInput(messages []Message, options llms.CallOptions) (anthropi
 // compactionContextManagement converts a CompactionConfig into the request's
 // context_management block.
 func compactionContextManagement(cfg *CompactionConfig) *anthropicContextManagement {
-	trigger := cfg.TriggerTokens
-	if trigger == 0 {
-		trigger = anthropicDefaultCompactTrigger
+	edit := anthropicContextManagementEdit{
+		Type:                 anthropicCompactionStrategy,
+		Instructions:         cfg.Instructions,
+		PauseAfterCompaction: cfg.PauseAfterCompaction,
 	}
-	trigger = max(trigger, anthropicMinCompactionTrigger)
-	return &anthropicContextManagement{
-		Edits: []anthropicContextManagementEdit{{
-			Type:                 anthropicCompactionStrategy,
-			Trigger:              &anthropicContextManagementTrigger{Type: "input_tokens", Value: trigger},
-			Instructions:         cfg.Instructions,
-			PauseAfterCompaction: cfg.PauseAfterCompaction,
-		}},
+	if cfg.TriggerTokens > 0 {
+		edit.Trigger = &anthropicContextManagementTrigger{
+			Type:  "input_tokens",
+			Value: max(cfg.TriggerTokens, anthropicMinCompactionTrigger),
+		}
 	}
+	return &anthropicContextManagement{Edits: []anthropicContextManagementEdit{edit}}
 }
 
 func appendUnique(dst []string, values ...string) []string {

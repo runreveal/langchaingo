@@ -96,6 +96,17 @@ func TestBuildAnthropicInput_Compaction(t *testing.T) {
 	}, body["context_management"], "a trigger below the API minimum is raised to it")
 }
 
+func TestBuildAnthropicInput_CompactionDefaultTrigger(t *testing.T) {
+	opts := llms.CallOptions{Metadata: map[string]any{
+		MetadataKeyCompaction: &CompactionConfig{},
+	}}
+	body := requestJSON(t, []Message{{Role: llms.ChatMessageTypeHuman, Type: "text", Content: "Hi"}}, opts)
+
+	require.Equal(t, map[string]any{
+		"edits": []any{map[string]any{"type": "compact_20260112"}},
+	}, body["context_management"], "a zero trigger is omitted so Bedrock applies its own default")
+}
+
 func TestParseAnthropicResponse_CacheUsage(t *testing.T) {
 	resp, err := parseAnthropicResponse([]byte(`{
 		"type": "message", "role": "assistant",
