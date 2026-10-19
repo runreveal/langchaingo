@@ -43,10 +43,12 @@ func TestGPTVersion(t *testing.T) {
 
 func TestNeedsReasoningOffForTools(t *testing.T) {
 	tests := map[string]bool{
-		"gpt-5.6-terra":       true,
-		"gpt-5.6-sol":         true,
-		"gpt-5.7":             true,
-		"gpt-6-astra":         true,
+		"gpt-5.6-terra": true,
+		"gpt-5.6-sol":   true,
+		"gpt-5.7":       true,
+		// No "none" level: tools need /v1/responses, and "none" is itself a 400.
+		"gpt-6-astra":         false,
+		"gpt-6.1-sol":         false,
 		"gpt-6-sol":           true,
 		"gpt-6-luna":          true,
 		"gpt-6":               true,
@@ -90,6 +92,11 @@ func TestMarshalReasoningEffortWithTools(t *testing.T) {
 			name:    "gpt-6 with tools disables reasoning",
 			request: ChatRequest{Model: "gpt-6-sol", Tools: []Tool{tool}},
 			want:    "none",
+		},
+		{
+			name:    "gpt-6-astra must not receive none, which it rejects",
+			request: ChatRequest{Model: "gpt-6-astra", Tools: []Tool{tool}},
+			want:    "",
 		},
 		{
 			name:    "gpt-5.6 without tools keeps the server default",

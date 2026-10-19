@@ -1,0 +1,378 @@
+# Model catalog: what langchaingo knows about each model family it calls.
+# Adding a model is an edit here, not a new strings.Contains case in a provider.
+# See the package doc in catalog.go for how ids are normalized and matched.
+#
+# Fields:
+#   id               canonical name of the family, for logs and tests
+#   match            id prefixes, compared after normalization. The longest
+#                    match wins, and a prefix only matches at a boundary (end of
+#                    id, "-", "@", ":" or "_"), so gpt-5 does not match gpt-5.7.
+#   vendor           who makes the model: anthropic | openai | google | amazon
+#   api              wire API the model is served by: messages |
+#                    chat_completions | responses | gemini | converse
+#   contextWindow    input context window, in tokens
+#   maxOutputTokens  the model's own output limit, in tokens; 0 when unknown.
+#                    Callers that want a smaller product cap apply it on top.
+#   reasoning        style: none | budget_tokens | adaptive | effort.
+#                    budget_tokens takes thinking.budget_tokens; adaptive takes
+#                    thinking.type=adaptive and rejects budget_tokens. efforts
+#                    lists the accepted effort levels.
+#   temperature      whether non-default sampling parameters (temperature,
+#                    top_p, top_k) are accepted
+#   pricing          USD per 1M tokens. geoPremium is the fractional uplift on
+#                    Bedrock geo inference profiles (us., eu., jp., ...);
+#                    global. profiles pay the base rate. longContext, when set,
+#                    is the rate for prompts above its threshold.
+#
+# Claude data: Anthropic models overview and migration guide (October 2026).
+# Bedrock geo premiums carried over from runreveal#4326; check them against
+# https://aws.amazon.com/bedrock/pricing/ when a price changes.
+
+models:
+  # --- Anthropic: Claude 5 ---
+  # Fable and Mythos 5.x always think; budget_tokens and sampling params 400.
+  - id: claude-fable-5
+    match: [claude-fable-5]
+    vendor: anthropic
+    api: messages
+    contextWindow: 1000000
+    maxOutputTokens: 128000
+    reasoning: {style: adaptive, efforts: [low, medium, high, xhigh, max]}
+    temperature: false
+    pricing: {input: 10, output: 50, geoPremium: 0.10}
+  - id: claude-mythos-5
+    match: [claude-mythos-5]
+    vendor: anthropic
+    api: messages
+    contextWindow: 1000000
+    maxOutputTokens: 128000
+    reasoning: {style: adaptive, efforts: [low, medium, high, xhigh, max]}
+    temperature: false
+    pricing: {input: 10, output: 50}
+  # Opus 5.5 cannot disable thinking; its default effort is medium.
+  - id: claude-opus-5-5
+    match: [claude-opus-5-5]
+    vendor: anthropic
+    api: messages
+    contextWindow: 1000000
+    maxOutputTokens: 128000
+    reasoning: {style: adaptive, efforts: [low, medium, high, xhigh, max]}
+    temperature: false
+    pricing: {input: 4, output: 20, geoPremium: 0.10}
+  - id: claude-opus-5
+    match: [claude-opus-5]
+    vendor: anthropic
+    api: messages
+    contextWindow: 1000000
+    maxOutputTokens: 128000
+    reasoning: {style: adaptive, efforts: [low, medium, high, xhigh, max]}
+    temperature: false
+    pricing: {input: 5, output: 25}
+  - id: claude-sonnet-5-5
+    match: [claude-sonnet-5-5]
+    vendor: anthropic
+    api: messages
+    contextWindow: 1000000
+    maxOutputTokens: 128000
+    reasoning: {style: adaptive, efforts: [low, medium, high, xhigh, max]}
+    temperature: false
+    pricing: {input: 2, output: 10}
+  - id: claude-sonnet-5
+    match: [claude-sonnet-5]
+    vendor: anthropic
+    api: messages
+    contextWindow: 1000000
+    maxOutputTokens: 128000
+    reasoning: {style: adaptive, efforts: [low, medium, high, xhigh, max]}
+    temperature: false
+    pricing: {input: 2, output: 10, geoPremium: 0.10}
+  # Haiku 5.5 bills prompts above 100K tokens at the long-context rate.
+  - id: claude-haiku-5-5
+    match: [claude-haiku-5-5]
+    vendor: anthropic
+    api: messages
+    contextWindow: 1000000
+    maxOutputTokens: 128000
+    reasoning: {style: adaptive, efforts: [low, medium, high, xhigh, max]}
+    temperature: false
+    pricing: {input: 0.10, output: 0.50, longContext: {threshold: 100000, input: 0.50, output: 2.50}}
+
+  # --- Anthropic: Claude 4 ---
+  # Opus 4.7 and 4.8 take adaptive thinking only, and no sampling params.
+  - id: claude-opus-4-8
+    match: [claude-opus-4-8]
+    vendor: anthropic
+    api: messages
+    contextWindow: 1000000
+    maxOutputTokens: 128000
+    reasoning: {style: adaptive, efforts: [low, medium, high, xhigh, max]}
+    temperature: false
+    pricing: {input: 5, output: 25}
+  - id: claude-opus-4-7
+    match: [claude-opus-4-7]
+    vendor: anthropic
+    api: messages
+    contextWindow: 1000000
+    maxOutputTokens: 128000
+    reasoning: {style: adaptive, efforts: [low, medium, high, xhigh, max]}
+    temperature: false
+    pricing: {input: 5, output: 25}
+  # The 4.6 models still accept budget_tokens, but it is deprecated there.
+  - id: claude-opus-4-6
+    match: [claude-opus-4-6]
+    vendor: anthropic
+    api: messages
+    contextWindow: 1000000
+    maxOutputTokens: 128000
+    reasoning: {style: adaptive, efforts: [low, medium, high, max]}
+    temperature: true
+    pricing: {input: 5, output: 25}
+  - id: claude-sonnet-4-6
+    match: [claude-sonnet-4-6]
+    vendor: anthropic
+    api: messages
+    contextWindow: 1000000
+    maxOutputTokens: 128000
+    reasoning: {style: adaptive, efforts: [low, medium, high, max]}
+    temperature: true
+    pricing: {input: 3, output: 15}
+  - id: claude-opus-4-5
+    match: [claude-opus-4-5]
+    vendor: anthropic
+    api: messages
+    contextWindow: 200000
+    maxOutputTokens: 64000
+    reasoning: {style: budget_tokens}
+    temperature: true
+    pricing: {input: 5, output: 25}
+  # Opus 4 and 4.1, at the legacy Opus rate.
+  - id: claude-opus-4
+    match: [claude-opus-4]
+    vendor: anthropic
+    api: messages
+    contextWindow: 200000
+    maxOutputTokens: 32000
+    reasoning: {style: budget_tokens}
+    temperature: true
+    pricing: {input: 15, output: 75}
+  - id: claude-sonnet-4-5
+    match: [claude-sonnet-4-5]
+    vendor: anthropic
+    api: messages
+    contextWindow: 200000
+    maxOutputTokens: 64000
+    reasoning: {style: budget_tokens}
+    temperature: true
+    pricing: {input: 3, output: 15}
+  - id: claude-sonnet-4
+    match: [claude-sonnet-4]
+    vendor: anthropic
+    api: messages
+    contextWindow: 200000
+    maxOutputTokens: 64000
+    reasoning: {style: budget_tokens}
+    temperature: true
+    pricing: {input: 3, output: 15}
+  - id: claude-haiku-4-5
+    match: [claude-haiku-4-5]
+    vendor: anthropic
+    api: messages
+    contextWindow: 200000
+    maxOutputTokens: 64000
+    reasoning: {style: budget_tokens}
+    temperature: true
+    pricing: {input: 1, output: 5}
+
+  # --- Anthropic: Claude 3 ---
+  # Retired on the Anthropic API, but still seen on Bedrock.
+  - id: claude-3-7-sonnet
+    match: [claude-3-7-sonnet]
+    vendor: anthropic
+    api: messages
+    contextWindow: 200000
+    maxOutputTokens: 64000
+    reasoning: {style: budget_tokens}
+    temperature: true
+    pricing: {input: 3, output: 15}
+  - id: claude-3-5-sonnet
+    match: [claude-3-5-sonnet]
+    vendor: anthropic
+    api: messages
+    contextWindow: 200000
+    maxOutputTokens: 8192
+    reasoning: {style: none}
+    temperature: true
+    pricing: {input: 3, output: 15}
+  - id: claude-3-haiku
+    match: [claude-3-haiku]
+    vendor: anthropic
+    api: messages
+    contextWindow: 200000
+    maxOutputTokens: 4096
+    reasoning: {style: none}
+    temperature: true
+    pricing: {input: 0.25, output: 1.25}
+
+  # --- Amazon Nova (Bedrock) ---
+  - id: nova-pro
+    match: [nova-pro]
+    vendor: amazon
+    api: converse
+    contextWindow: 300000
+    maxOutputTokens: 5000
+    reasoning: {style: none}
+    temperature: true
+    pricing: {input: 0.8, output: 3.2}
+  - id: nova-lite
+    match: [nova-lite]
+    vendor: amazon
+    api: converse
+    contextWindow: 300000
+    maxOutputTokens: 5000
+    reasoning: {style: none}
+    temperature: true
+    pricing: {input: 0.06, output: 0.24}
+  - id: nova-micro
+    match: [nova-micro]
+    vendor: amazon
+    api: converse
+    contextWindow: 128000
+    maxOutputTokens: 5000
+    reasoning: {style: none}
+    temperature: true
+    pricing: {input: 0.035, output: 0.14}
+
+  # --- OpenAI ---
+  # Source: the developers.openai.com model pages for each family (October
+  # 2026). Effort levels differ release to release, so each one has its own
+  # entry. Numbered GPT models not listed here (gpt-5.3, gpt-7, ...) fall back
+  # to version parsing in the openai client.
+  #
+  # From gpt-5.6 on, /chat/completions takes function tools only with reasoning
+  # off (reasoning_effort "none"), so these families default to /v1/responses.
+  # gpt-6-astra and gpt-6.1-sol have no "none" level and take tools only on
+  # /v1/responses.
+  - id: gpt-6.1
+    match: [gpt-6.1]
+    vendor: openai
+    api: responses
+    contextWindow: 1050000
+    maxOutputTokens: 128000
+    reasoning: {style: effort, efforts: [low, medium, high, xhigh, max]}
+    temperature: false
+  - id: gpt-6-astra
+    match: [gpt-6-astra]
+    vendor: openai
+    api: responses
+    contextWindow: 1050000
+    maxOutputTokens: 128000
+    reasoning: {style: effort, efforts: [low, medium, high, xhigh, max]}
+    temperature: false
+  # gpt-6-sol and gpt-6-luna.
+  - id: gpt-6
+    match: [gpt-6]
+    vendor: openai
+    api: responses
+    contextWindow: 1050000
+    maxOutputTokens: 128000
+    reasoning: {style: effort, efforts: [none, low, medium, high, xhigh, max]}
+    temperature: false
+  # gpt-5.6 (alias of gpt-5.6-sol), gpt-5.6-terra and gpt-5.6-luna.
+  - id: gpt-5.6
+    match: [gpt-5.6]
+    vendor: openai
+    api: responses
+    contextWindow: 1050000
+    maxOutputTokens: 128000
+    reasoning: {style: effort, efforts: [none, low, medium, high, xhigh, max]}
+    temperature: false
+  - id: gpt-5.4
+    match: [gpt-5.4, gpt-5.5]
+    vendor: openai
+    api: chat_completions
+    contextWindow: 1050000
+    maxOutputTokens: 128000
+    reasoning: {style: effort, efforts: [none, low, medium, high, xhigh]}
+    temperature: false
+  - id: gpt-5.2
+    match: [gpt-5.2]
+    vendor: openai
+    api: chat_completions
+    contextWindow: 400000
+    maxOutputTokens: 128000
+    reasoning: {style: effort, efforts: [none, low, medium, high, xhigh]}
+    temperature: false
+  # gpt-5.1 defaults to "none": it does not reason unless asked.
+  - id: gpt-5.1
+    match: [gpt-5.1]
+    vendor: openai
+    api: chat_completions
+    contextWindow: 400000
+    maxOutputTokens: 128000
+    reasoning: {style: effort, efforts: [none, low, medium, high]}
+    temperature: false
+  # gpt-5, gpt-5-mini and gpt-5-nano.
+  - id: gpt-5
+    match: [gpt-5]
+    vendor: openai
+    api: chat_completions
+    contextWindow: 400000
+    maxOutputTokens: 128000
+    reasoning: {style: effort, efforts: [minimal, low, medium, high]}
+    temperature: false
+  - id: o-series
+    match: [o1, o3, o4]
+    vendor: openai
+    api: chat_completions
+    contextWindow: 200000
+    maxOutputTokens: 100000
+    reasoning: {style: effort, efforts: [low, medium, high]}
+    temperature: false
+  - id: gpt-4o
+    match: [gpt-4o, gpt-4-turbo]
+    vendor: openai
+    api: chat_completions
+    contextWindow: 128000
+    reasoning: {style: none}
+    temperature: true
+  - id: gpt-4
+    match: [gpt-4]
+    vendor: openai
+    api: chat_completions
+    contextWindow: 8192
+    reasoning: {style: none}
+    temperature: true
+
+  # --- Google Gemini ---
+  - id: gemini-2.5-pro
+    match: [gemini-2.5-pro]
+    vendor: google
+    api: gemini
+    contextWindow: 1000000
+    maxOutputTokens: 65536
+    reasoning: {style: budget_tokens}
+    temperature: true
+  - id: gemini-2.5-flash
+    match: [gemini-2.5-flash]
+    vendor: google
+    api: gemini
+    contextWindow: 1000000
+    maxOutputTokens: 65536
+    reasoning: {style: budget_tokens}
+    temperature: true
+  - id: gemini-flash-legacy
+    match: [gemini-2.0-flash, gemini-1.5-flash]
+    vendor: google
+    api: gemini
+    contextWindow: 1000000
+    maxOutputTokens: 8192
+    reasoning: {style: none}
+    temperature: true
+  # Any other Gemini model.
+  - id: gemini
+    match: [gemini]
+    vendor: google
+    api: gemini
+    contextWindow: 1000000
+    reasoning: {style: none}
+    temperature: true

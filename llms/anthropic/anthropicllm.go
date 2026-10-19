@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 	"github.com/tmc/langchaingo/httputil"
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/anthropic/internal/anthropicclient"
+	"github.com/tmc/langchaingo/llms/modelcatalog"
 )
 
 var (
@@ -159,7 +161,13 @@ func generateMessagesContent(
 
 	tools := toolsToTools(opts.Tools)
 
-	betaHeaders, thinking := extractThinkingOptions(o, opts)
+	betaHeaders, thinking, outputConfig := extractThinkingOptions(o, opts)
+
+	// Claude 4.7 and later reject non-default sampling parameters with a 400.
+	temperature, topP := opts.Temperature, opts.TopP
+	if model := cmp.Or(opts.Model, o.model); !acceptsSamplingParams(model) {
+		temperature, topP = 0, 0
+	}
 
 	// Extract compaction configuration from metadata
 	var contextMgmt *anthropicclient.ContextManagement
@@ -196,10 +204,11 @@ func generateMessagesContent(
 		System:                 systemPrompt,
 		MaxTokens:              opts.MaxTokens,
 		StopWords:              opts.StopWords,
-		Temperature:            opts.Temperature,
-		TopP:                   opts.TopP,
+		Temperature:            temperature,
+		TopP:                   topP,
 		Tools:                  tools,
 		Thinking:               thinking,
+		OutputConfig:           outputConfig,
 		ContextManagement:      contextMgmt,
 		BetaHeaders:            betaHeaders,
 		StreamingFunc:          opts.StreamingFunc,
@@ -588,37 +597,56 @@ func supportsReasoningForModel(model string) bool {
 	if model == "" {
 		return false
 	}
+	if spec, ok := modelcatalog.Lookup(model); ok {
+		return spec.Reasoning.Style != modelcatalog.ReasoningNone
+	}
 
+	// Ids the model catalog does not know (new releases, custom names) keep the
+	// name-based guess.
 	modelLower := strings.ToLower(model)
-
-	// Claude 3.7+ supports extended thinking
-	if strings.Contains(modelLower, "claude-3-7") ||
+	return strings.Contains(modelLower, "claude-3-7") ||
 		strings.Contains(modelLower, "claude-3.7") ||
-		strings.Contains(modelLower, "claude-3-7-sonnet") {
-		return true
-	}
-
-	// Claude 4+ supports extended thinking with interleaving
-	if strings.Contains(modelLower, "claude-4") ||
+		strings.Contains(modelLower, "claude-4") ||
 		strings.Contains(modelLower, "claude-opus-4") ||
-		strings.Contains(modelLower, "claude-sonnet-4") {
-		return true
-	}
-
-	// Claude 5 families support adaptive reasoning.
-	if strings.Contains(modelLower, "claude-5") ||
+		strings.Contains(modelLower, "claude-sonnet-4") ||
+		strings.Contains(modelLower, "claude-5") ||
 		strings.Contains(modelLower, "claude-opus-5") ||
 		strings.Contains(modelLower, "claude-sonnet-5") ||
+		strings.Contains(modelLower, "claude-haiku-5") ||
 		strings.Contains(modelLower, "claude-fable-5") ||
-		strings.Contains(modelLower, "claude-mythos-5") {
-		return true
-	}
-
-	return false
+		strings.Contains(modelLower, "claude-mythos-5")
 }
 
-// extractThinkingOptions extracts thinking configuration and beta headers from call options
-func extractThinkingOptions(o *LLM, opts *llms.CallOptions) ([]string, *anthropicclient.ThinkingConfig) {
+// reasoningStyleForModel reports how model takes a thinking request. Unknown
+// reasoning models default to budget_tokens, the long-standing behaviour.
+func reasoningStyleForModel(model string) modelcatalog.ReasoningStyle {
+	if spec, ok := modelcatalog.Lookup(model); ok {
+		return spec.Reasoning.Style
+	}
+	if supportsReasoningForModel(model) {
+		return modelcatalog.ReasoningBudgetTokens
+	}
+	return modelcatalog.ReasoningNone
+}
+
+// acceptsSamplingParams reports whether model accepts a non-default
+// temperature, top_p or top_k. Claude 4.7 and later reject them with a 400.
+func acceptsSamplingParams(model string) bool {
+	if spec, ok := modelcatalog.Lookup(model); ok {
+		return spec.Temperature
+	}
+	return true
+}
+
+// extractThinkingOptions extracts the beta headers, thinking configuration and
+// output configuration from call options. Budget-style models get
+// thinking.budget_tokens; adaptive models (Claude 4.6 and later) get
+// thinking.type=adaptive with the mode mapped to output_config.effort, because
+// 4.7 and later reject budget_tokens.
+func extractThinkingOptions(
+	o *LLM,
+	opts *llms.CallOptions,
+) ([]string, *anthropicclient.ThinkingConfig, *anthropicclient.OutputConfig) {
 	// Extract beta headers for prompt caching support
 	var betaHeaders []string
 	if opts.Metadata != nil {
@@ -627,51 +655,72 @@ func extractThinkingOptions(o *LLM, opts *llms.CallOptions) ([]string, *anthropi
 		}
 	}
 
-	// Extract thinking configuration
-	var budgetTokens int
-	if opts.Metadata != nil {
-		if config, ok := opts.Metadata["thinking_config"].(*llms.ThinkingConfig); ok {
-			// Only set budget_tokens for models that support extended thinking
-			// Claude 3.7+ and Claude 4+ support this feature
-			currentModel := opts.Model
-			if currentModel == "" {
-				currentModel = o.model
-			}
-			if supportsReasoningForModel(currentModel) {
-				if config.BudgetTokens > 0 {
-					budgetTokens = config.BudgetTokens
-				} else if config.Mode != llms.ThinkingModeNone {
-					// Calculate budget based on mode
-					budgetTokens = llms.CalculateThinkingBudget(config.Mode, opts.MaxTokens)
-				}
-
-				// Ensure budget is within valid range for Claude 3.7+
-				if budgetTokens > 0 {
-					if budgetTokens < 1024 {
-						budgetTokens = 1024 // Minimum for Claude
-					} else if budgetTokens > 128000 {
-						budgetTokens = 128000 // Maximum for Claude (128K)
-					}
-				}
-			}
-
-			// Add interleaved thinking header if requested (Claude 4+)
-			if config.InterleaveThinking && supportsReasoningForModel(currentModel) {
-				betaHeaders = append(betaHeaders, "interleaved-thinking-2025-05-14")
-			}
-		}
+	config, ok := opts.Metadata["thinking_config"].(*llms.ThinkingConfig)
+	if !ok || config == nil {
+		return betaHeaders, nil, nil
+	}
+	currentModel := opts.Model
+	if currentModel == "" {
+		currentModel = o.model
 	}
 
-	// Create thinking configuration if we have a budget
-	var thinking *anthropicclient.ThinkingConfig
-	if budgetTokens > 0 {
-		thinking = &anthropicclient.ThinkingConfig{
+	switch reasoningStyleForModel(currentModel) {
+	case modelcatalog.ReasoningAdaptive:
+		thinking, output := adaptiveThinking(currentModel, config)
+		// Adaptive thinking interleaves on its own; the beta header is not needed.
+		return betaHeaders, thinking, output
+	case modelcatalog.ReasoningBudgetTokens:
+		var budgetTokens int
+		if config.BudgetTokens > 0 {
+			budgetTokens = config.BudgetTokens
+		} else if config.Mode != llms.ThinkingModeNone {
+			// Calculate budget based on mode
+			budgetTokens = llms.CalculateThinkingBudget(config.Mode, opts.MaxTokens)
+		}
+
+		// Add interleaved thinking header if requested (Claude 4+)
+		if config.InterleaveThinking {
+			betaHeaders = append(betaHeaders, "interleaved-thinking-2025-05-14")
+		}
+		if budgetTokens <= 0 {
+			return betaHeaders, nil, nil
+		}
+		// Ensure budget is within valid range for Claude 3.7+
+		budgetTokens = min(max(budgetTokens, 1024), 128000)
+		return betaHeaders, &anthropicclient.ThinkingConfig{
 			Type:         "enabled",
 			BudgetTokens: budgetTokens,
+		}, nil
+	default:
+		return betaHeaders, nil, nil
+	}
+}
+
+// adaptiveThinking builds the thinking and output configuration for an
+// adaptive-thinking model. ThinkingModeNone sends nothing: several of these
+// models reject thinking.type=disabled, and on the rest omitting thinking is
+// how it stays off. An explicit token budget has no adaptive equivalent, so it
+// only turns thinking on.
+func adaptiveThinking(
+	model string,
+	config *llms.ThinkingConfig,
+) (*anthropicclient.ThinkingConfig, *anthropicclient.OutputConfig) {
+	var effort string
+	switch config.Mode {
+	case llms.ThinkingModeLow, llms.ThinkingModeMedium, llms.ThinkingModeHigh:
+		effort = string(config.Mode)
+	case llms.ThinkingModeAuto:
+	default:
+		if config.BudgetTokens <= 0 {
+			return nil, nil
 		}
 	}
 
-	return betaHeaders, thinking
+	thinking := &anthropicclient.ThinkingConfig{Type: "adaptive"}
+	if spec, ok := modelcatalog.Lookup(model); ok && effort != "" && spec.Reasoning.SupportsEffort(effort) {
+		return thinking, &anthropicclient.OutputConfig{Effort: effort}
+	}
+	return thinking, nil
 }
 
 // extractThinkingFromText extracts thinking content from Anthropic responses

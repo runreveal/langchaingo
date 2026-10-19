@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/modelcatalog"
 )
 
 // Ref: https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-anthropic-claude-messages.html
@@ -202,6 +203,11 @@ func createAnthropicCompletion(ctx context.Context,
 		TopP:             options.TopP,
 		TopK:             options.TopK,
 		StopSequences:    options.StopWords,
+	}
+
+	// Claude 4.7 and later reject non-default sampling parameters with a 400.
+	if spec, ok := modelcatalog.Lookup(modelID); ok && !spec.Temperature {
+		input.Temperature, input.TopP, input.TopK = 0, 0, 0
 	}
 
 	// Add tools if provided

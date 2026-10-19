@@ -87,11 +87,13 @@ func WithChatCompletionsAPI() llms.CallOption {
 }
 
 // WithReasoningEffort sets how much the model reasons before answering. Valid
-// values depend on the model; gpt-5.6 accepts "none", "low", "medium", "high",
-// "xhigh" and "max".
+// values depend on the model: gpt-5.6, gpt-6-sol and gpt-6-luna accept "none",
+// "low", "medium", "high", "xhigh" and "max"; gpt-6-astra and gpt-6.1-sol have
+// no "none". See llms/modelcatalog for each family's levels.
 //
-// It applies to the Responses API. On /chat/completions the value is sent as
-// reasoning_effort only for models that accept it.
+// It is sent as reasoning.effort on the Responses API and as reasoning_effort
+// on /chat/completions, unchanged, and takes precedence over
+// llms.WithThinkingMode, which is otherwise mapped onto the model's levels.
 func WithReasoningEffort(effort string) llms.CallOption {
 	return func(opts *llms.CallOptions) { setMeta(opts, metaReasoningEffort, effort) }
 }

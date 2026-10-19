@@ -332,7 +332,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.28.6 // indirect
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect

@@ -59,7 +59,7 @@ func (o *LLM) generateWithResponses(
 		StreamingReasoningFunc: opts.StreamingReasoningFunc,
 	}
 
-	if effort := reasoningEffortOption(opts); effort != "" {
+	if effort, _ := reasoningEffort(opts, model); effort != "" {
 		req.Reasoning = &openaiclient.ResponsesReasoning{Effort: effort}
 	}
 	if summary := reasoningSummaryOption(opts); summary != "" {

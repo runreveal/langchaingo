@@ -141,6 +141,9 @@ type MessageRequest struct {
 	// Extended thinking parameters (Claude 3.7+)
 	Thinking *ThinkingConfig `json:"thinking,omitempty"`
 
+	// OutputConfig carries the effort level for adaptive-thinking models.
+	OutputConfig *OutputConfig `json:"output_config,omitempty"`
+
 	// Context management for automatic compaction (Claude 4+)
 	ContextManagement *ContextManagement `json:"context_management,omitempty"`
 
@@ -163,6 +166,7 @@ func (c *Client) CreateMessage(ctx context.Context, r *MessageRequest) (*Message
 		Tools:                  r.Tools,
 		Stream:                 r.Stream,
 		Thinking:               r.Thinking,
+		OutputConfig:           r.OutputConfig,
 		ContextManagement:      r.ContextManagement,
 		StreamingFunc:          r.StreamingFunc,
 		StreamingReasoningFunc: r.StreamingReasoningFunc,

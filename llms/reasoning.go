@@ -3,6 +3,8 @@ package llms
 import (
 	"strconv"
 	"strings"
+
+	"github.com/tmc/langchaingo/llms/modelcatalog"
 )
 
 // ThinkingMode represents different thinking/reasoning modes for LLMs.
@@ -160,6 +162,11 @@ func SupportsReasoningModel(llm interface{}) bool {
 // This can be used by LLM implementations that want to extend rather than replace
 // the default detection logic.
 func DefaultIsReasoningModel(model string) bool {
+	if spec, ok := modelcatalog.Lookup(model); ok {
+		return spec.Reasoning.Style != modelcatalog.ReasoningNone
+	}
+
+	// Ids the model catalog does not know fall back to name-based detection.
 	modelLower := strings.ToLower(model)
 
 	// OpenAI reasoning models
@@ -182,6 +189,7 @@ func DefaultIsReasoningModel(model string) bool {
 		strings.Contains(modelLower, "claude-sonnet-4") ||
 		strings.Contains(modelLower, "claude-opus-5") ||
 		strings.Contains(modelLower, "claude-sonnet-5") ||
+		strings.Contains(modelLower, "claude-haiku-5") ||
 		strings.Contains(modelLower, "claude-fable-5") ||
 		strings.Contains(modelLower, "claude-mythos-5") {
 		return true

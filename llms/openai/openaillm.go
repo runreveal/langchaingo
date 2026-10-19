@@ -227,40 +227,16 @@ func (o *LLM) GenerateContent(
 		}
 	}
 
-	// Extract reasoning effort for thinking models
-	// Note: OpenAI o1/o3 models have built-in reasoning and don't support reasoning_effort parameter
-	// This is kept for future models that might support it (like GPT-5)
-	var reasoningEffort string
-	// Commented out for now since current o1 models don't support this parameter
-	/*
-		if opts.Metadata != nil {
-			if config, ok := opts.Metadata["thinking_config"].(*llms.ThinkingConfig); ok {
-				// Map thinking mode to reasoning effort
-				switch config.Mode {
-				case llms.ThinkingModeLow:
-					reasoningEffort = "low"
-				case llms.ThinkingModeMedium:
-					reasoningEffort = "medium"
-				case llms.ThinkingModeHigh:
-					reasoningEffort = "high"
-				}
-
-				// Handle streaming for thinking
-				if config.StreamThinking && opts.StreamingReasoningFunc == nil && opts.StreamingFunc != nil {
-					// Set up default reasoning streaming if requested but not provided
-					// Wrap the single-param streaming func into a reasoning func
-					opts.StreamingReasoningFunc = func(ctx context.Context, reasoningChunk []byte, chunk []byte) error {
-						// For default behavior, we might want to stream both or just the main content
-						// Here we'll just stream the main content chunk
-						if len(chunk) > 0 {
-							return opts.StreamingFunc(ctx, chunk)
-						}
-						return nil
-					}
-				}
-			}
-		}
-	*/
+	// Reasoning effort: an explicit WithReasoningEffort, or the thinking mode
+	// mapped onto the model's effort levels. From gpt-5.6 on, this endpoint takes
+	// function tools only with reasoning off, and the client sends "none" for
+	// that when no effort is set; a mode-derived effort would turn the call into
+	// a 400, so it gives way. An explicit effort is always sent as asked.
+	reasoningEffort, explicitEffort := reasoningEffort(&opts, effectiveModel)
+	hasTools := len(opts.Tools) > 0 || len(opts.Functions) > 0
+	if !explicitEffort && hasTools && openaiclient.ModelRequiresResponsesAPIForTools(effectiveModel) {
+		reasoningEffort = ""
+	}
 
 	// Filter out internal metadata that shouldn't be sent to API
 	apiMetadata := make(map[string]any)

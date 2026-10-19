@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/modelcatalog"
 )
 
 const (
@@ -154,6 +155,11 @@ const ReasoningEffortNone = "none"
 // The server applies its default effort ("medium") when the field is absent, so
 // omitting reasoning_effort does not avoid the error.
 func ModelRequiresResponsesAPIForTools(model string) bool {
+	if spec, ok := modelcatalog.Lookup(model); ok {
+		return spec.API == modelcatalog.APIResponses
+	}
+	// Numbered GPT models the catalog does not list yet (gpt-5.7, gpt-7, ...)
+	// are routed by version.
 	major, minor, ok := gptVersion(model)
 	if !ok {
 		return false
@@ -165,7 +171,14 @@ func ModelRequiresResponsesAPIForTools(model string) bool {
 // /chat/completions has to disable reasoning to be accepted. It is the fallback
 // for callers pinned to /chat/completions against a model that would otherwise
 // use /v1/responses; reasoning is lost, but the call succeeds.
+//
+// Models without a "none" level (gpt-6-astra, gpt-6.1-sol) cannot take tools on
+// /chat/completions at all, and reject "none" itself with a 400, so they get
+// nothing injected and the server's own error says to use /v1/responses.
 func needsReasoningOffForTools(model string) bool {
+	if spec, ok := modelcatalog.Lookup(model); ok {
+		return spec.API == modelcatalog.APIResponses && spec.Reasoning.SupportsEffort(ReasoningEffortNone)
+	}
 	return ModelRequiresResponsesAPIForTools(model)
 }
 
@@ -203,6 +216,10 @@ func isReasoningModel(model string) bool {
 // IsReasoningModel reports whether the model reasons before answering, and so
 // rejects a non-default temperature on either endpoint.
 func IsReasoningModel(model string) bool {
+	if spec, ok := modelcatalog.Lookup(model); ok {
+		return !spec.Temperature
+	}
+	// Ids the model catalog does not know fall back to name-based detection.
 	// o1 series: o1-preview, o1-mini
 	if strings.HasPrefix(model, "o1-") {
 		return true

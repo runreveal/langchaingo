@@ -47,6 +47,9 @@ type messagePayload struct {
 	// Extended thinking parameters (Claude 3.7+)
 	Thinking *ThinkingConfig `json:"thinking,omitempty"`
 
+	// OutputConfig carries the effort level for adaptive-thinking models.
+	OutputConfig *OutputConfig `json:"output_config,omitempty"`
+
 	// Context management for automatic compaction (Claude 4+)
 	ContextManagement *ContextManagement `json:"context_management,omitempty"`
 
@@ -99,10 +102,19 @@ func (cc CompactionContent) GetType() string {
 	return cc.Type
 }
 
-// ThinkingConfig represents the thinking configuration for Claude 3.7+
+// ThinkingConfig represents the thinking configuration for Claude 3.7+.
+// Type is "enabled" (with BudgetTokens) on budget-style models, or "adaptive"
+// on Claude 4.6 and later, which reject BudgetTokens on 4.7+.
 type ThinkingConfig struct {
-	Type         string `json:"type"` // "enabled" or "disabled"
+	Type         string `json:"type"`
 	BudgetTokens int    `json:"budget_tokens,omitempty"`
+}
+
+// OutputConfig is the Messages API output_config object.
+type OutputConfig struct {
+	// Effort steers how much an adaptive-thinking model reasons: low, medium,
+	// high, and on newer models xhigh and max.
+	Effort string `json:"effort,omitempty"`
 }
 
 // Tool used for the request message payload.
