@@ -72,6 +72,14 @@ func TestSupportsReasoningForCurrentClaudeModels(t *testing.T) {
 		{model: "claude-fable-5-1", want: true},
 		{model: "claude-mythos-5-1", want: true},
 		{model: "global.anthropic.claude-opus-5-5", want: true},
+		{model: "claude-sonnet-5-5", want: true},
+		{model: "claude-haiku-5-5", want: true},
+		{model: "claude-haiku-4-5", want: true},
+		{model: "claude-3-5-sonnet-20240620", want: false},
+		{model: "", want: false},
+		// Not in the model catalog: the name-based guess decides.
+		{model: "claude-3.7-sonnet-latest", want: true},
+		{model: "claude-instant-1", want: false},
 	}
 
 	for _, tt := range tests {

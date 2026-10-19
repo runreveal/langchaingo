@@ -40,6 +40,8 @@ func TestSamplingParamsByModel(t *testing.T) {
 		"claude-opus-4-8":          false,
 		"claude-sonnet-4-6":        true,
 		"claude-opus-4-5@20251101": true,
+		// Unknown to the model catalog: passed through as before.
+		"claude-some-future-model": true,
 	}
 	for model, wantSent := range cases {
 		t.Run(model, func(t *testing.T) {

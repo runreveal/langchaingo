@@ -242,6 +242,33 @@ models:
 		"uppercase match": `
 models:
   - {id: a, match: [Claude], vendor: x, api: messages, contextWindow: 1, reasoning: {style: none}}`,
+		"missing id": `
+models:
+  - {match: [a], vendor: x, api: messages, contextWindow: 1, reasoning: {style: none}}`,
+		"missing match": `
+models:
+  - {id: a, vendor: x, api: messages, contextWindow: 1, reasoning: {style: none}}`,
+		"empty match": `
+models:
+  - {id: a, match: [""], vendor: x, api: messages, contextWindow: 1, reasoning: {style: none}}`,
+		"missing vendor": `
+models:
+  - {id: a, match: [a], api: messages, contextWindow: 1, reasoning: {style: none}}`,
+		"negative max output": `
+models:
+  - {id: a, match: [a], vendor: x, api: messages, contextWindow: 1, maxOutputTokens: -1, reasoning: {style: none}}`,
+		"unknown reasoning style": `
+models:
+  - {id: a, match: [a], vendor: x, api: messages, contextWindow: 1, reasoning: {style: telepathy}}`,
+		"negative pricing": `
+models:
+  - {id: a, match: [a], vendor: x, api: messages, contextWindow: 1, reasoning: {style: none},
+     pricing: {input: -1, output: 1}}`,
+		"negative geo premium": `
+models:
+  - {id: a, match: [a], vendor: x, api: messages, contextWindow: 1, reasoning: {style: none},
+     pricing: {input: 1, output: 1, geoPremium: -0.1}}`,
+		"not yaml": `models: [`,
 		"long context without threshold": `
 models:
   - {id: a, match: [a], vendor: x, api: messages, contextWindow: 1, reasoning: {style: none},
@@ -278,5 +305,53 @@ func TestOpenAIEffortLevels(t *testing.T) {
 		if !slices.Equal(s.Reasoning.Efforts, want) {
 			t.Errorf("%s efforts = %v, want %v", model, s.Reasoning.Efforts, want)
 		}
+	}
+}
+
+func TestParseAcceptsValidCatalog(t *testing.T) {
+	got, err := parse([]byte(`
+models:
+  - {id: a, match: [a, a2], vendor: x, api: responses, contextWindow: 10, maxOutputTokens: 5,
+     reasoning: {style: effort, efforts: [low]}, temperature: true,
+     pricing: {input: 1, output: 2, geoPremium: 0.1, longContext: {threshold: 5, input: 3, output: 4}}}`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != "a" || got[0].Pricing.LongContext.Threshold != 5 {
+		t.Errorf("parse = %+v", got)
+	}
+}
+
+func TestMustParsePanicsOnInvalidCatalog(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Error("mustParse did not panic on an invalid catalog")
+		}
+	}()
+	mustParse([]byte(`models: [{id: a}]`))
+}
+
+// TestEveryMatchReachesItsEntry guards the YAML against entries that can never
+// be selected: each match prefix must resolve to the entry that lists it, not
+// to a longer prefix elsewhere.
+func TestEveryMatchReachesItsEntry(t *testing.T) {
+	for _, s := range Specs() {
+		for _, m := range s.Match {
+			got, ok := Lookup(m)
+			if !ok || got.ID != s.ID {
+				t.Errorf("Lookup(%q) = %q (%v), want entry %q", m, got.ID, ok, s.ID)
+			}
+		}
+	}
+}
+
+func TestSpecsReturnsACopy(t *testing.T) {
+	all := Specs()
+	if len(all) == 0 {
+		t.Fatal("Specs() is empty")
+	}
+	all[0].ID = "changed"
+	if Specs()[0].ID == "changed" {
+		t.Error("Specs() exposed the catalog's backing slice")
 	}
 }

@@ -42,6 +42,8 @@ func TestSamplingParamsByModel(t *testing.T) {
 		"global.anthropic.claude-opus-4-8":                 false,
 		"global.anthropic.claude-sonnet-4-6":               true,
 		"global.anthropic.claude-sonnet-4-5-20250929-v1:0": true,
+		// Unknown to the model catalog: passed through as before.
+		"anthropic.claude-some-future-model": true,
 	}
 	for model, wantSent := range cases {
 		t.Run(model, func(t *testing.T) {

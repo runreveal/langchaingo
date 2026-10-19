@@ -89,8 +89,17 @@ func TestThinkingRequestByModel(t *testing.T) {
 		// Budget-style models keep budget_tokens (50% of 4096 max tokens).
 		{"sonnet 4.5 medium", "claude-sonnet-4-5", llms.WithThinkingMode(llms.ThinkingModeMedium), "enabled", 2048, ""},
 		{"haiku 4.5 budget", "claude-haiku-4-5", llms.WithThinkingBudget(3000), "enabled", 3000, ""},
-		// Unknown ids keep the name-based guess and the budget request.
-		{"unknown claude 4", "claude-sonnet-4-9-preview", llms.WithThinkingBudget(2000), "enabled", 2000, ""},
+		// Budgets are clamped to the 1024..128000 range Claude accepts.
+		{"budget below minimum", "claude-sonnet-4-5", llms.WithThinkingBudget(100), "enabled", 1024, ""},
+		{"budget above maximum", "claude-sonnet-4-5", llms.WithThinkingBudget(500000), "enabled", 128000, ""},
+		// Auto has no budget equivalent on budget-style models, so nothing is sent.
+		{"sonnet 4.5 auto", "claude-sonnet-4-5", llms.WithThinkingMode(llms.ThinkingModeAuto), "", 0, ""},
+		// Models with no reasoning get no thinking field.
+		{"claude 3.5 sonnet", "claude-3-5-sonnet-20240620", llms.WithThinkingMode(llms.ThinkingModeHigh), "", 0, ""},
+		// Ids the catalog does not know keep the name-based guess: a reasoning
+		// family gets the budget request, anything else gets nothing.
+		{"unknown, reasoning family", "claude-3.7-sonnet-latest", llms.WithThinkingBudget(2000), "enabled", 2000, ""},
+		{"unknown, other family", "claude-instant-1", llms.WithThinkingMode(llms.ThinkingModeHigh), "", 0, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
