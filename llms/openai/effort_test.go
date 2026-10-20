@@ -72,6 +72,13 @@ func TestResponsesReasoningEffort(t *testing.T) {
 		// An explicit effort is sent as given, so the API reports a bad level.
 		{"explicit unsupported effort", "gpt-6-astra", WithReasoningEffort("none"), "none"},
 		{"no option", "gpt-6-sol", nil, ""},
+		// gpt-5-pro accepts only "high"; any other mode keeps the default.
+		{"high on gpt-5-pro", "gpt-5-pro", llms.WithThinkingMode(llms.ThinkingModeHigh), "high"},
+		{"low on gpt-5-pro", "gpt-5-pro", llms.WithThinkingMode(llms.ThinkingModeLow), ""},
+		{"none on gpt-5-pro", "gpt-5-pro", llms.WithThinkingMode(llms.ThinkingModeNone), ""},
+		// gpt-5.x-pro starts at medium.
+		{"medium on gpt-5.5-pro", "gpt-5.5-pro", llms.WithThinkingMode(llms.ThinkingModeMedium), "medium"},
+		{"low on gpt-5.5-pro", "gpt-5.5-pro", llms.WithThinkingMode(llms.ThinkingModeLow), ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

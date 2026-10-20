@@ -251,7 +251,7 @@ models:
   # From gpt-5.6 on, /chat/completions takes function tools only with reasoning
   # off (reasoning_effort "none"), so these families default to /v1/responses.
   # gpt-6-astra and gpt-6.1-sol have no "none" level and take tools only on
-  # /v1/responses.
+  # /v1/responses. The -pro variants are Responses-only outright.
   - id: gpt-6.1
     match: [gpt-6.1]
     vendor: openai
@@ -319,6 +319,54 @@ models:
     contextWindow: 400000
     maxOutputTokens: 128000
     reasoning: {style: effort, efforts: [minimal, low, medium, high]}
+    temperature: false
+  # --- OpenAI: pro variants ---
+  # The pro models are served on /v1/responses only (no /chat/completions at
+  # all) and accept a narrower set of effort levels than their base family, so
+  # each needs its own entry ahead of the base prefix (gpt-5-pro would otherwise
+  # match gpt-5).
+  - id: gpt-5.5-pro
+    match: [gpt-5.5-pro]
+    vendor: openai
+    api: responses
+    contextWindow: 1050000
+    maxOutputTokens: 128000
+    reasoning: {style: effort, efforts: [medium, high, xhigh]}
+    temperature: false
+  - id: gpt-5.4-pro
+    match: [gpt-5.4-pro]
+    vendor: openai
+    api: responses
+    contextWindow: 1050000
+    maxOutputTokens: 128000
+    reasoning: {style: effort, efforts: [medium, high, xhigh]}
+    temperature: false
+  - id: gpt-5.2-pro
+    match: [gpt-5.2-pro]
+    vendor: openai
+    api: responses
+    contextWindow: 400000
+    maxOutputTokens: 128000
+    reasoning: {style: effort, efforts: [medium, high, xhigh]}
+    temperature: false
+  # gpt-5-pro accepts only "high", which is also its default.
+  - id: gpt-5-pro
+    match: [gpt-5-pro]
+    vendor: openai
+    api: responses
+    contextWindow: 400000
+    maxOutputTokens: 272000
+    reasoning: {style: effort, efforts: [high]}
+    temperature: false
+  # The o1-pro and o3-pro pages do not list effort levels; these are the
+  # o-series levels.
+  - id: o-series-pro
+    match: [o1-pro, o3-pro]
+    vendor: openai
+    api: responses
+    contextWindow: 200000
+    maxOutputTokens: 100000
+    reasoning: {style: effort, efforts: [low, medium, high]}
     temperature: false
   - id: o-series
     match: [o1, o3, o4]

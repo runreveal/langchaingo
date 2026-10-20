@@ -480,6 +480,10 @@ func TestUseResponsesAPIRouting(t *testing.T) {
 		{name: "a later family", model: "gpt-6", want: true},
 		{name: "gpt-5.5 stays on chat completions", model: "gpt-5.5", want: false},
 		{name: "gpt-4o stays on chat completions", model: "gpt-4o", want: false},
+		// Pro models are not served on /chat/completions at all.
+		{name: "gpt-5-pro", model: "gpt-5-pro", want: true},
+		{name: "gpt-5.5-pro", model: "gpt-5.5-pro", want: true},
+		{name: "o3-pro", model: "o3-pro", want: true},
 		{
 			name: "a custom base URL is left alone", model: "gpt-5.6-terra",
 			baseURL: "https://inference.do-ai.run/v1", want: false,

@@ -51,6 +51,13 @@ func TestLookup(t *testing.T) {
 		{"o3", "o-series"},
 		{"o4-mini", "o-series"},
 		{"o1-preview", "o-series"},
+		{"gpt-5-pro", "gpt-5-pro"},
+		{"gpt-5-pro-2025-10-06", "gpt-5-pro"},
+		{"gpt-5.2-pro", "gpt-5.2-pro"},
+		{"gpt-5.4-pro", "gpt-5.4-pro"},
+		{"gpt-5.5-pro-2026-04-23", "gpt-5.5-pro"},
+		{"o1-pro", "o-series-pro"},
+		{"o3-pro-2025-06-10", "o-series-pro"},
 		{"gemini-2.5-flash-lite", "gemini-2.5-flash"},
 		{"gemini-3-pro", "gemini"},
 		{"us.amazon.nova-micro-v1:0", "nova-micro"},
@@ -295,6 +302,11 @@ func TestOpenAIEffortLevels(t *testing.T) {
 		"gpt-6-luna":  {"none", "low", "medium", "high", "xhigh", "max"},
 		"gpt-6-astra": {"low", "medium", "high", "xhigh", "max"},
 		"gpt-6.1-sol": {"low", "medium", "high", "xhigh", "max"},
+		"gpt-5-pro":   {"high"},
+		"gpt-5.2-pro": {"medium", "high", "xhigh"},
+		"gpt-5.4-pro": {"medium", "high", "xhigh"},
+		"gpt-5.5-pro": {"medium", "high", "xhigh"},
+		"o3-pro":      {"low", "medium", "high"},
 	}
 	for model, want := range cases {
 		s, ok := Lookup(model)
