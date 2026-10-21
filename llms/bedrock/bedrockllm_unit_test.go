@@ -222,3 +222,35 @@ func (h *testCallbackHandler) HandleRetrieverStart(ctx context.Context, query st
 func (h *testCallbackHandler) HandleRetrieverEnd(ctx context.Context, query string, documents []schema.Document) {
 }
 func (h *testCallbackHandler) HandleStreamingFunc(ctx context.Context, chunk []byte) {}
+
+func TestProcessMessages_CachedContent(t *testing.T) {
+	cc := &llms.CacheControl{Type: "ephemeral"}
+	msgs, err := processMessages([]llms.MessageContent{
+		{
+			Role:  llms.ChatMessageTypeSystem,
+			Parts: []llms.ContentPart{llms.WithCacheControl(llms.TextPart("system"), cc)},
+		},
+		{
+			Role: llms.ChatMessageTypeTool,
+			Parts: []llms.ContentPart{
+				llms.ToolCallResponse{ToolCallID: "a", Content: "first"},
+				llms.WithCacheControl(llms.ToolCallResponse{ToolCallID: "b", Content: "second"}, cc),
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("processMessages: %v", err)
+	}
+	if len(msgs) != 3 {
+		t.Fatalf("got %d messages, want 3", len(msgs))
+	}
+	if msgs[0].Type != "text" || msgs[0].Content != "system" || msgs[0].CacheControl != cc {
+		t.Errorf("system message = %+v, want unwrapped text carrying the breakpoint", msgs[0])
+	}
+	if msgs[1].CacheControl != nil {
+		t.Errorf("unwrapped tool result got a breakpoint: %+v", msgs[1])
+	}
+	if msgs[2].Type != "tool_result" || msgs[2].ToolUseID != "b" || msgs[2].CacheControl != cc {
+		t.Errorf("cached tool result = %+v, want tool_result b carrying the breakpoint", msgs[2])
+	}
+}

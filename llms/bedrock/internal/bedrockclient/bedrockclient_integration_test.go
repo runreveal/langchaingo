@@ -173,10 +173,7 @@ func TestClient_CreateCompletion(t *testing.T) {
 					},
 				},
 				StopReason: AnthropicCompletionReasonEndTurn,
-				Usage: struct {
-					InputTokens  int `json:"input_tokens"`
-					OutputTokens int `json:"output_tokens"`
-				}{
+				Usage: anthropicUsage{
 					InputTokens:  10,
 					OutputTokens: 5,
 				},
@@ -421,25 +418,19 @@ func TestClient_CreateCompletion_Streaming(t *testing.T) {
 		{
 			Type: "message_start",
 			Message: struct {
-				ID           string `json:"id"`
-				Type         string `json:"type"`
-				Role         string `json:"role"`
-				Content      []any  `json:"content"`
-				Model        string `json:"model"`
-				StopReason   any    `json:"stop_reason"`
-				StopSequence any    `json:"stop_sequence"`
-				Usage        struct {
-					InputTokens  int `json:"input_tokens"`
-					OutputTokens int `json:"output_tokens"`
-				} `json:"usage"`
+				ID           string         `json:"id"`
+				Type         string         `json:"type"`
+				Role         string         `json:"role"`
+				Content      []any          `json:"content"`
+				Model        string         `json:"model"`
+				StopReason   any            `json:"stop_reason"`
+				StopSequence any            `json:"stop_sequence"`
+				Usage        anthropicUsage `json:"usage"`
 			}{
 				ID:   "msg-123",
 				Type: "message",
 				Role: "assistant",
-				Usage: struct {
-					InputTokens  int `json:"input_tokens"`
-					OutputTokens int `json:"output_tokens"`
-				}{
+				Usage: anthropicUsage{
 					InputTokens: 10,
 				},
 			},
