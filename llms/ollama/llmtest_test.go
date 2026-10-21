@@ -1,8 +1,8 @@
 package ollama
 
 import (
-	"net"
-	"net/url"
+	"context"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -10,15 +10,31 @@ import (
 	"github.com/tmc/langchaingo/testing/llmtest"
 )
 
-func TestLLM(t *testing.T) {
+// liveServerURL returns the Ollama server URL for live tests.
+// It skips the test if no server answers there.
+func liveServerURL(t *testing.T) string {
+	t.Helper()
 	serverURL := os.Getenv("OLLAMA_HOST")
 	if serverURL == "" {
 		serverURL = "http://localhost:11434"
 	}
-	skipIfServerUnavailable(t, serverURL)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, serverURL+"/api/version", nil)
+	if err != nil {
+		t.Skipf("Ollama not available: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Skipf("Ollama not available: %v", err)
+	}
+	resp.Body.Close()
+	return serverURL
+}
 
+func TestLLM(t *testing.T) {
 	llm, err := New(
-		WithServerURL(serverURL),
+		WithServerURL(liveServerURL(t)),
 		WithModel("gpt-oss:20b"),
 	)
 	if err != nil {
@@ -26,18 +42,4 @@ func TestLLM(t *testing.T) {
 	}
 
 	llmtest.TestLLM(t, llm)
-}
-
-// skipIfServerUnavailable skips tests that need a live Ollama server when none is reachable.
-func skipIfServerUnavailable(t *testing.T, serverURL string) {
-	t.Helper()
-	host := serverURL
-	if u, err := url.Parse(serverURL); err == nil && u.Host != "" {
-		host = u.Host
-	}
-	conn, err := net.DialTimeout("tcp", host, time.Second)
-	if err != nil {
-		t.Skipf("Ollama not available at %s: %v", serverURL, err)
-	}
-	conn.Close()
 }

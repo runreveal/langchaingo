@@ -87,10 +87,10 @@ func TestConstitutionalChain(t *testing.T) {
 	}, nil)
 	_, err = c.Call(ctx, map[string]any{"question": "What is the meaning of life?"})
 	if err != nil {
-		// Check if this is a recording mismatch error
-		// The openai client masks httprr replay misses as a generic network error.
+		// Check if this is a recording mismatch error. The openai client
+		// reports a replay miss as a network error.
 		if strings.Contains(err.Error(), "cached HTTP response not found") ||
-			strings.Contains(err.Error(), "failed to reach API server") {
+			(rr.Replaying() && strings.Contains(err.Error(), "network error")) {
 			t.Skip(
 				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
 			)
