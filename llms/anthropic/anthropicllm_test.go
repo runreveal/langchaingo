@@ -84,14 +84,17 @@ func TestSupportsReasoningForCurrentClaudeModels(t *testing.T) {
 	}
 }
 
-func TestProcessMessages(t *testing.T) {
-	tests := []struct {
-		name       string
-		messages   []llms.MessageContent
-		wantLen    int
-		wantSystem any
-		wantErr    bool
-	}{
+type processMessagesTest struct {
+	name       string
+	messages   []llms.MessageContent
+	wantLen    int
+	wantSystem any
+	wantErr    bool
+}
+
+// processMessagesTests lists the cases for TestProcessMessages.
+func processMessagesTests() []processMessagesTest {
+	return []processMessagesTest{
 		{
 			name: "basic text message",
 			messages: []llms.MessageContent{
@@ -174,6 +177,10 @@ func TestProcessMessages(t *testing.T) {
 			wantErr: false,
 		},
 	}
+}
+
+func TestProcessMessages(t *testing.T) {
+	tests := processMessagesTests()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -528,6 +535,31 @@ func TestProcessAnthropicResponse_Compaction(t *testing.T) {
 	}
 }
 
+// processResponseJSON decodes a message response with the given content
+// array and output token count and converts it with processAnthropicResponse.
+func processResponseJSON(t *testing.T, content string, outputTokens int) *llms.ContentResponse {
+	t.Helper()
+	jsonData := fmt.Sprintf(`{
+		"content": %s,
+		"id": "msg_test",
+		"model": "claude-test",
+		"role": "assistant",
+		"stop_reason": "end_turn",
+		"type": "message",
+		"usage": {"input_tokens": 5, "output_tokens": %d}
+	}`, content, outputTokens)
+
+	var result anthropicclient.MessageResponsePayload
+	if err := result.UnmarshalJSON([]byte(jsonData)); err != nil {
+		t.Fatalf("UnmarshalJSON() error = %v", err)
+	}
+	resp, err := processAnthropicResponse(&result)
+	if err != nil {
+		t.Fatalf("processAnthropicResponse() error = %v", err)
+	}
+	return resp
+}
+
 func TestProcessAnthropicResponse_AggregatesMessageBlocks(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -579,25 +611,7 @@ func TestProcessAnthropicResponse_AggregatesMessageBlocks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			jsonData := fmt.Sprintf(`{
-				"content": %s,
-				"id": "msg_test",
-				"model": "claude-test",
-				"role": "assistant",
-				"stop_reason": "end_turn",
-				"type": "message",
-				"usage": {"input_tokens": 5, "output_tokens": %d}
-			}`, tt.content, tt.wantOutputTokens)
-
-			var result anthropicclient.MessageResponsePayload
-			if err := result.UnmarshalJSON([]byte(jsonData)); err != nil {
-				t.Fatalf("UnmarshalJSON() error = %v", err)
-			}
-
-			resp, err := processAnthropicResponse(&result)
-			if err != nil {
-				t.Fatalf("processAnthropicResponse() error = %v", err)
-			}
+			resp := processResponseJSON(t, tt.content, tt.wantOutputTokens)
 			if len(resp.Choices) != 1 {
 				t.Fatalf("len(Choices) = %d, want 1", len(resp.Choices))
 			}

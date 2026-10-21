@@ -68,13 +68,7 @@ func joinDocs(docs []string, separator string) string {
 }
 
 // mergeSplits merges smaller splits into splits that are closer to the chunkSize.
-func mergeSplits(
-	splits []string,
-	separator string,
-	chunkSize int,
-	chunkOverlap int,
-	lenFunc func(string) int,
-) []string { //nolint:cyclop
+func mergeSplits(splits []string, separator string, chunkSize int, chunkOverlap int, lenFunc func(string) int) []string { //nolint:cyclop
 	docs := make([]string, 0)
 	currentDoc := make([]string, 0)
 	total := 0

@@ -149,11 +149,7 @@ func TestParseStreamingMessageResponseStopsAfterProviderError(t *testing.T) {
 
 	body := "data: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"overloaded\"}}\n\n" +
 		"data: {\"type\":\"message_stop\"}\n\n"
-	_, err := parseStreamingMessageResponse(
-		context.Background(),
-		&http.Response{Body: io.NopCloser(strings.NewReader(body))},
-		&messagePayload{},
-	)
+	_, err := parseStreamingMessageResponse(context.Background(), &http.Response{Body: io.NopCloser(strings.NewReader(body))}, &messagePayload{})
 	if err == nil {
 		t.Fatal("parseStreamingMessageResponse returned nil error")
 	}
@@ -187,12 +183,7 @@ func Test_parseStreamingMessageResponse_withEmptyInput(t *testing.T) {
 
 	firstContent, ok := result.Content[0].(*TextContent)
 	require.True(t, ok, "First content block should be of type TextContent")
-	require.Equal(
-		t,
-		"I can help you find your current IP address. Let me retrieve that information for you.",
-		firstContent.Text,
-		"First content block text should match expected value",
-	)
+	require.Equal(t, "I can help you find your current IP address. Let me retrieve that information for you.", firstContent.Text, "First content block text should match expected value")
 
 	secondContent, ok := result.Content[1].(*ToolUseContent)
 	require.True(t, ok, "Second content block should be of type ToolUseContent")
@@ -261,12 +252,7 @@ func Test_parseStreamingMessageResponse_withInputJSONDeltas(t *testing.T) {
 
 	firstContent, ok := result.Content[0].(*TextContent)
 	require.True(t, ok, "First content block should be of type TextContent")
-	require.Equal(
-		t,
-		"I can help you get the current time. Let me check that for you.",
-		firstContent.Text,
-		"First content block text should match expected value",
-	)
+	require.Equal(t, "I can help you get the current time. Let me check that for you.", firstContent.Text, "First content block text should match expected value")
 
 	secondContent, ok := result.Content[1].(*ToolUseContent)
 	require.True(t, ok, "Second content block should be of type ToolUseContent")

@@ -19,10 +19,8 @@ import (
 )
 
 var (
-	ErrEmptyResponse = errors.New("no response")
-	ErrMissingToken  = errors.New(
-		"missing the Anthropic API key, set it in the ANTHROPIC_API_KEY environment variable",
-	)
+	ErrEmptyResponse            = errors.New("no response")
+	ErrMissingToken             = errors.New("missing the Anthropic API key, set it in the ANTHROPIC_API_KEY environment variable")
 	ErrUnexpectedResponseLength = errors.New("unexpected length of response")
 	ErrInvalidContentType       = errors.New("invalid content type")
 	ErrUnsupportedMessageType   = errors.New("unsupported message type")
@@ -86,11 +84,7 @@ func (o *LLM) Call(ctx context.Context, prompt string, options ...llms.CallOptio
 }
 
 // GenerateContent implements the Model interface.
-func (o *LLM) GenerateContent(
-	ctx context.Context,
-	messages []llms.MessageContent,
-	options ...llms.CallOption,
-) (*llms.ContentResponse, error) {
+func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
 	if o.CallbacksHandler != nil {
 		o.CallbacksHandler.HandleLLMGenerateContentStart(ctx, messages)
 	}
@@ -106,12 +100,7 @@ func (o *LLM) GenerateContent(
 	return generateMessagesContent(ctx, o, messages, opts)
 }
 
-func generateCompletionsContent(
-	ctx context.Context,
-	o *LLM,
-	messages []llms.MessageContent,
-	opts *llms.CallOptions,
-) (*llms.ContentResponse, error) {
+func generateCompletionsContent(ctx context.Context, o *LLM, messages []llms.MessageContent, opts *llms.CallOptions) (*llms.ContentResponse, error) {
 	if len(messages) == 0 || len(messages[0].Parts) == 0 {
 		return nil, ErrEmptyResponse
 	}
@@ -152,12 +141,7 @@ func generateCompletionsContent(
 	return resp, nil
 }
 
-func generateMessagesContent(
-	ctx context.Context,
-	o *LLM,
-	messages []llms.MessageContent,
-	opts *llms.CallOptions,
-) (*llms.ContentResponse, error) {
+func generateMessagesContent(ctx context.Context, o *LLM, messages []llms.MessageContent, opts *llms.CallOptions) (*llms.ContentResponse, error) {
 	chatMessages, systemPrompt, err := processMessages(messages)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: failed to process messages: %w", err)
@@ -303,69 +287,88 @@ func processAnthropicResponse(result *anthropicclient.MessageResponsePayload) (*
 	// not lose text when thinking or tool-use blocks precede it. Parts keeps the
 	// blocks in order so llms.ContentResponse.AssistantMessage can replay signed
 	// thinking verbatim.
-	choice := &llms.ContentChoice{
+	b := &messageBuilder{choice: &llms.ContentChoice{
 		StopReason:     result.StopReason,
 		GenerationInfo: generationInfo(result, nil),
-	}
-	var text, thinking, output strings.Builder
-	var thinkingSignature string
-
+	}}
 	for _, content := range result.Content {
-		switch block := content.(type) {
-		case *anthropicclient.TextContent:
-			// Extract thinking content from the response text
-			thinkingContent, outputContent := extractThinkingFromText(block.Text)
-			text.WriteString(block.Text)
-			thinking.WriteString(thinkingContent)
-			output.WriteString(outputContent)
-			choice.Parts = append(choice.Parts, llms.TextContent{Text: block.Text})
-		case *anthropicclient.ToolUseContent:
-			argumentsJSON, err := json.Marshal(block.Input)
-			if err != nil {
-				return nil, fmt.Errorf("anthropic: failed to marshal tool use arguments: %w", err)
-			}
-			toolCall := llms.ToolCall{
-				ID: block.ID,
-				FunctionCall: &llms.FunctionCall{
-					Name:      block.Name,
-					Arguments: string(argumentsJSON),
-				},
-			}
-			choice.ToolCalls = append(choice.ToolCalls, toolCall)
-			choice.Parts = append(choice.Parts, toolCall)
-		case *anthropicclient.ThinkingContent:
-			thinking.WriteString(block.Thinking)
-			if block.Signature != "" {
-				thinkingSignature = block.Signature
-			}
-			choice.Parts = append(choice.Parts, llms.ThinkingContent{
-				Thinking:  block.Thinking,
-				Signature: block.Signature,
-			})
-		case *anthropicclient.RedactedThinkingContent:
-			// Encrypted; it is not part of the output text, but must be
-			// passed back verbatim on the next turn.
-			choice.GenerationInfo["RedactedThinkingData"] = block.Data
-			choice.Parts = append(choice.Parts, llms.RedactedThinkingContent{Data: block.Data})
-		case *anthropicclient.CompactionContent:
-			text.WriteString(block.Content)
-			choice.GenerationInfo["CompactionSummary"] = block.Content
-			choice.Parts = append(choice.Parts, llms.TextContent{Text: block.Content})
-		default:
-			return nil, fmt.Errorf("anthropic: %w: %v", ErrUnsupportedContentType, content.GetType())
+		if err := b.add(content); err != nil {
+			return nil, err
 		}
 	}
-	choice.Content = text.String()
-	choice.ReasoningContent = thinking.String()
-	choice.GenerationInfo["ThinkingContent"] = thinking.String()
-	choice.GenerationInfo["OutputContent"] = output.String()
-	if thinkingSignature != "" {
-		choice.GenerationInfo["ThinkingSignature"] = thinkingSignature
-	}
+	choice := b.finish()
 
 	return &llms.ContentResponse{
 		Choices: []*llms.ContentChoice{choice},
 	}, nil
+}
+
+// messageBuilder folds the content blocks of one Anthropic response into a
+// single choice.
+type messageBuilder struct {
+	choice                 *llms.ContentChoice
+	text, thinking, output strings.Builder
+	thinkingSignature      string
+}
+
+func (b *messageBuilder) add(content anthropicclient.Content) error {
+	choice := b.choice
+	switch block := content.(type) {
+	case *anthropicclient.TextContent:
+		// Extract thinking content from the response text
+		thinkingContent, outputContent := extractThinkingFromText(block.Text)
+		b.text.WriteString(block.Text)
+		b.thinking.WriteString(thinkingContent)
+		b.output.WriteString(outputContent)
+		choice.Parts = append(choice.Parts, llms.TextContent{Text: block.Text})
+	case *anthropicclient.ToolUseContent:
+		argumentsJSON, err := json.Marshal(block.Input)
+		if err != nil {
+			return fmt.Errorf("anthropic: failed to marshal tool use arguments: %w", err)
+		}
+		toolCall := llms.ToolCall{
+			ID: block.ID,
+			FunctionCall: &llms.FunctionCall{
+				Name:      block.Name,
+				Arguments: string(argumentsJSON),
+			},
+		}
+		choice.ToolCalls = append(choice.ToolCalls, toolCall)
+		choice.Parts = append(choice.Parts, toolCall)
+	case *anthropicclient.ThinkingContent:
+		b.thinking.WriteString(block.Thinking)
+		if block.Signature != "" {
+			b.thinkingSignature = block.Signature
+		}
+		choice.Parts = append(choice.Parts, llms.ThinkingContent{
+			Thinking:  block.Thinking,
+			Signature: block.Signature,
+		})
+	case *anthropicclient.RedactedThinkingContent:
+		// Encrypted; it is not part of the output text, but must be
+		// passed back verbatim on the next turn.
+		choice.GenerationInfo["RedactedThinkingData"] = block.Data
+		choice.Parts = append(choice.Parts, llms.RedactedThinkingContent{Data: block.Data})
+	case *anthropicclient.CompactionContent:
+		b.text.WriteString(block.Content)
+		choice.GenerationInfo["CompactionSummary"] = block.Content
+		choice.Parts = append(choice.Parts, llms.TextContent{Text: block.Content})
+	default:
+		return fmt.Errorf("anthropic: %w: %v", ErrUnsupportedContentType, content.GetType())
+	}
+	return nil
+}
+
+func (b *messageBuilder) finish() *llms.ContentChoice {
+	choice := b.choice
+	choice.Content = b.text.String()
+	choice.ReasoningContent = b.thinking.String()
+	choice.GenerationInfo["ThinkingContent"] = b.thinking.String()
+	choice.GenerationInfo["OutputContent"] = b.output.String()
+	if b.thinkingSignature != "" {
+		choice.GenerationInfo["ThinkingSignature"] = b.thinkingSignature
+	}
+	return choice
 }
 
 // generationInfo builds the per-choice GenerationInfo map: the usage
@@ -797,10 +800,7 @@ func adaptiveThinkingOnly(model string) bool {
 
 // extractThinkingOptions extracts the thinking configuration, output
 // controls, and beta headers from call options.
-func extractThinkingOptions(
-	o *LLM,
-	opts *llms.CallOptions,
-) ([]string, *anthropicclient.ThinkingConfig, *anthropicclient.OutputConfig) {
+func extractThinkingOptions(o *LLM, opts *llms.CallOptions) ([]string, *anthropicclient.ThinkingConfig, *anthropicclient.OutputConfig) {
 	// Extract beta headers for prompt caching support
 	var betaHeaders []string
 	if opts.Metadata != nil {

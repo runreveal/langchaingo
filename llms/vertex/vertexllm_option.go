@@ -64,6 +64,10 @@ func WithCredentialsFile(path string) Option {
 		if path == "" {
 			return
 		}
+		// The replacement, option.WithAuthCredentialsFile, requires choosing
+		// which credential types to accept; keep the existing behavior until
+		// that is decided.
+		//nolint:staticcheck // SA1019: see above.
 		o.clientOpts = append(o.clientOpts, option.WithCredentialsFile(path))
 	}
 }
@@ -74,6 +78,8 @@ func WithCredentialsJSON(data []byte) Option {
 		if len(data) == 0 {
 			return
 		}
+		// See WithCredentialsFile for why the deprecated option is kept.
+		//nolint:staticcheck // SA1019: see WithCredentialsFile.
 		o.clientOpts = append(o.clientOpts, option.WithCredentialsJSON(data))
 	}
 }

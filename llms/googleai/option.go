@@ -85,10 +85,7 @@ func WithCredentialsJSON(credentialsJSON []byte) Option {
 		if len(credentialsJSON) == 0 {
 			return
 		}
-		opts.ClientOptions = append(
-			opts.ClientOptions,
-			option.WithCredentialsJSON(credentialsJSON),
-		) //nolint:staticcheck // documented: trusted credentials only
+		opts.ClientOptions = append(opts.ClientOptions, option.WithCredentialsJSON(credentialsJSON)) //nolint:staticcheck // documented: trusted credentials only
 		opts.auth = authCredentials
 		opts.apiKey = ""
 	}
@@ -105,10 +102,7 @@ func WithCredentialsFile(credentialsFile string) Option {
 		if credentialsFile == "" {
 			return
 		}
-		opts.ClientOptions = append(
-			opts.ClientOptions,
-			option.WithCredentialsFile(credentialsFile),
-		) //nolint:staticcheck // documented: trusted credentials only
+		opts.ClientOptions = append(opts.ClientOptions, option.WithCredentialsFile(credentialsFile)) //nolint:staticcheck // documented: trusted credentials only
 		opts.auth = authCredentials
 		opts.apiKey = ""
 	}

@@ -9,7 +9,7 @@ func TestDefined(t *testing.T) {
 	t.Parallel()
 	type Shape struct {
 		Name     string `json:"shapeName" describe:"shape name"`
-		NumSides int    `json:"numSides"  describe:"number of sides"`
+		NumSides int    `json:"numSides" describe:"number of sides"`
 	}
 
 	tests := map[string]struct {

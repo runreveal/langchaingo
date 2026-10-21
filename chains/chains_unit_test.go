@@ -205,11 +205,7 @@ func (m *mockHandlerHaver) GetCallbackHandler() callbacks.Handler {
 	return m.handler
 }
 
-func (m *mockHandlerHaver) Call(
-	ctx context.Context,
-	inputs map[string]any,
-	options ...ChainCallOption,
-) (map[string]any, error) {
+func (m *mockHandlerHaver) Call(ctx context.Context, inputs map[string]any, options ...ChainCallOption) (map[string]any, error) {
 	return nil, nil
 }
 

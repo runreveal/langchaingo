@@ -82,10 +82,7 @@ func TestGenerateContentFunctionParameters(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ = io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(
-			w,
-			`{"id":"c","object":"chat.completion","model":"gpt-4o","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}`,
-		)
+		_, _ = io.WriteString(w, `{"id":"c","object":"chat.completion","model":"gpt-4o","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}`)
 	}))
 	defer server.Close()
 
@@ -139,12 +136,7 @@ func TestGetModelCapabilities(t *testing.T) {
 	for _, tt := range tests {
 		caps := getModelCapabilities(tt.model)
 		if caps.SupportsThinking != tt.wantThinking {
-			t.Errorf(
-				"getModelCapabilities(%q).SupportsThinking = %v, want %v",
-				tt.model,
-				caps.SupportsThinking,
-				tt.wantThinking,
-			)
+			t.Errorf("getModelCapabilities(%q).SupportsThinking = %v, want %v", tt.model, caps.SupportsThinking, tt.wantThinking)
 		}
 		if caps.SupportsSystem != tt.wantSystem {
 			t.Errorf("getModelCapabilities(%q).SupportsSystem = %v, want %v", tt.model, caps.SupportsSystem, tt.wantSystem)

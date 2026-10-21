@@ -113,12 +113,7 @@ func (s *Store) AddDocuments(ctx context.Context, docs []schema.Document, _ ...v
 //	WithEmbedder: if set, it will embed query string with this embedder; otherwise embed with vector's embedder
 //
 // ref: https://redis.io/docs/latest/develop/interact/search-and-query/advanced-concepts/vectors/#pre-filter-query-attributes-hybrid-approach
-func (s *Store) SimilaritySearch(
-	ctx context.Context,
-	query string,
-	numDocuments int,
-	options ...vectorstores.Option,
-) ([]schema.Document, error) {
+func (s *Store) SimilaritySearch(ctx context.Context, query string, numDocuments int, options ...vectorstores.Option) ([]schema.Document, error) {
 	opts := s.getOptions(options...)
 	scoreThreshold, err := s.getScoreThreshold(opts)
 	if err != nil {

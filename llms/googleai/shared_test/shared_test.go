@@ -741,10 +741,7 @@ func NewMockPredictionServer(handler PredictHandlerFunc) *mockPredictionServer {
 }
 
 // Predict implements the UnimplementedPredictionServiceServer. It calls predictFunc.
-func (s *mockPredictionServer) Predict(
-	ctx context.Context,
-	req *aiplatformpb.PredictRequest,
-) (*aiplatformpb.PredictResponse, error) {
+func (s *mockPredictionServer) Predict(ctx context.Context, req *aiplatformpb.PredictRequest) (*aiplatformpb.PredictResponse, error) {
 	if s.predictFunc == nil {
 		return nil, status.Error(codes.Unimplemented, "Predict handler was not provided")
 	}
@@ -754,17 +751,11 @@ func (s *mockPredictionServer) Predict(
 
 // getPredictHandlerFuncWithCustomEmbeddingModel returns a predictFunc which checks that the embedding request has been made
 // with the custom provided embedding model.
-func getPredictHandlerFuncWithCustomEmbeddingModel(
-	embeddingModel string,
-) func(ctx context.Context, req *aiplatformpb.PredictRequest) (*aiplatformpb.PredictResponse, error) {
+func getPredictHandlerFuncWithCustomEmbeddingModel(embeddingModel string) func(ctx context.Context, req *aiplatformpb.PredictRequest) (*aiplatformpb.PredictResponse, error) {
 	return func(ctx context.Context, req *aiplatformpb.PredictRequest) (*aiplatformpb.PredictResponse, error) {
 		expectedEndpointSuffix := "/models/" + embeddingModel
 		if !strings.HasSuffix(req.Endpoint, expectedEndpointSuffix) {
-			return nil, status.Errorf(
-				codes.InvalidArgument,
-				"model name mismatch, expected suffix '%s'",
-				expectedEndpointSuffix,
-			)
+			return nil, status.Errorf(codes.InvalidArgument, "model name mismatch, expected suffix '%s'", expectedEndpointSuffix)
 		}
 
 		// Create a dummy embedding response that the client code will accept.

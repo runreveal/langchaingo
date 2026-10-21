@@ -53,10 +53,7 @@ func (c *Client) CreateEmbedding(ctx context.Context, texts *CreateEmbeddingRequ
 const maxBufferSize = 512 * 1000
 
 // GenerateContent generates text based on the given prompts.
-func (c *Client) GenerateContent(
-	ctx context.Context,
-	request *GenerateContentRequest,
-) (*GenerateContentResponse, error) { // nolint:funlen,cyclop
+func (c *Client) GenerateContent(ctx context.Context, request *GenerateContentRequest) (*GenerateContentResponse, error) { // nolint:funlen,cyclop
 	requestBody, err := json.Marshal(request)
 	if err != nil {
 		return nil, err

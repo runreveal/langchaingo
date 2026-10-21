@@ -43,11 +43,7 @@ func getEnvVariables(t *testing.T) (string, string, string) {
 	ctx := context.Background()
 	opensearchEndpoint := os.Getenv("OPENSEARCH_ENDPOINT")
 	if opensearchEndpoint == "" {
-		openseachContainer, err := tcopensearch.Run(
-			ctx,
-			"opensearchproject/opensearch:2.11.1",
-			testcontainers.WithLogger(log.TestLogger(t)),
-		)
+		openseachContainer, err := tcopensearch.Run(ctx, "opensearchproject/opensearch:2.11.1", testcontainers.WithLogger(log.TestLogger(t)))
 		if err != nil && strings.Contains(err.Error(), "Cannot connect to the Docker daemon") {
 			t.Skip("Docker not available")
 		}
@@ -207,13 +203,7 @@ func setOpensearchClient(
 }
 
 func TestOpensearchStoreRest(t *testing.T) {
-	httprr.SkipIfNoCredentialsAndRecordingMissing(
-		t,
-		"OPENSEARCH_ENDPOINT",
-		"OPENSEARCH_USER",
-		"OPENSEARCH_PASSWORD",
-		"OPENAI_API_KEY",
-	)
+	httprr.SkipIfNoCredentialsAndRecordingMissing(t, "OPENSEARCH_ENDPOINT", "OPENSEARCH_USER", "OPENSEARCH_PASSWORD", "OPENAI_API_KEY")
 
 	rr := httprr.OpenForTest(t, http.DefaultTransport)
 	defer rr.Close()
@@ -248,13 +238,7 @@ func TestOpensearchStoreRest(t *testing.T) {
 }
 
 func TestOpensearchStoreRestWithScoreThreshold(t *testing.T) {
-	httprr.SkipIfNoCredentialsAndRecordingMissing(
-		t,
-		"OPENSEARCH_ENDPOINT",
-		"OPENSEARCH_USER",
-		"OPENSEARCH_PASSWORD",
-		"OPENAI_API_KEY",
-	)
+	httprr.SkipIfNoCredentialsAndRecordingMissing(t, "OPENSEARCH_ENDPOINT", "OPENSEARCH_USER", "OPENSEARCH_PASSWORD", "OPENAI_API_KEY")
 
 	rr := httprr.OpenForTest(t, http.DefaultTransport)
 	defer rr.Close()
@@ -301,13 +285,7 @@ func TestOpensearchStoreRestWithScoreThreshold(t *testing.T) {
 }
 
 func TestOpensearchAsRetriever(t *testing.T) {
-	httprr.SkipIfNoCredentialsAndRecordingMissing(
-		t,
-		"OPENSEARCH_ENDPOINT",
-		"OPENSEARCH_USER",
-		"OPENSEARCH_PASSWORD",
-		"OPENAI_API_KEY",
-	)
+	httprr.SkipIfNoCredentialsAndRecordingMissing(t, "OPENSEARCH_ENDPOINT", "OPENSEARCH_USER", "OPENSEARCH_PASSWORD", "OPENAI_API_KEY")
 
 	rr := httprr.OpenForTest(t, http.DefaultTransport)
 	defer rr.Close()
@@ -356,13 +334,7 @@ func TestOpensearchAsRetriever(t *testing.T) {
 }
 
 func TestOpensearchAsRetrieverWithScoreThreshold(t *testing.T) {
-	httprr.SkipIfNoCredentialsAndRecordingMissing(
-		t,
-		"OPENSEARCH_ENDPOINT",
-		"OPENSEARCH_USER",
-		"OPENSEARCH_PASSWORD",
-		"OPENAI_API_KEY",
-	)
+	httprr.SkipIfNoCredentialsAndRecordingMissing(t, "OPENSEARCH_ENDPOINT", "OPENSEARCH_USER", "OPENSEARCH_PASSWORD", "OPENAI_API_KEY")
 
 	rr := httprr.OpenForTest(t, http.DefaultTransport)
 	defer rr.Close()

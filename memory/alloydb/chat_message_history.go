@@ -48,12 +48,7 @@ func NewChatMessageHistory(ctx context.Context,
 
 	err = cmh.validateTable(ctx)
 	if err != nil {
-		return ChatMessageHistory{}, fmt.Errorf(
-			"error validating table '%s' in schema '%s': %w",
-			tableName,
-			cmh.schemaName,
-			err,
-		)
+		return ChatMessageHistory{}, fmt.Errorf("error validating table '%s' in schema '%s': %w", tableName, cmh.schemaName, err)
 	}
 	return cmh, nil
 }
@@ -108,12 +103,7 @@ func (c *ChatMessageHistory) validateTable(ctx context.Context) error {
 	for reqColumn, expectedType := range requiredColumns {
 		actualType, found := columns[reqColumn]
 		if !found {
-			return fmt.Errorf(
-				"error, column '%s' is missing in table '%s'. Expected columns: %v",
-				reqColumn,
-				c.tableName,
-				requiredColumns,
-			)
+			return fmt.Errorf("error, column '%s' is missing in table '%s'. Expected columns: %v", reqColumn, c.tableName, requiredColumns)
 		}
 		if actualType != expectedType {
 			return fmt.Errorf("error, column '%s' in table '%s' has type '%s', but expected type '%s'",

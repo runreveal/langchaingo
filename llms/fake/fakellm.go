@@ -27,11 +27,7 @@ func NewFakeLLM(responses []string) *LLM {
 // context cancellation and, when llms.WithStreamingFunc is set, streams
 // the response to the callback before returning it; a callback error
 // aborts the request.
-func (f *LLM) GenerateContent(
-	ctx context.Context,
-	_ []llms.MessageContent,
-	options ...llms.CallOption,
-) (*llms.ContentResponse, error) {
+func (f *LLM) GenerateContent(ctx context.Context, _ []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -63,10 +59,7 @@ func (f *LLM) GenerateContent(
 
 // Call  the model with a prompt.
 func (f *LLM) Call(ctx context.Context, prompt string, options ...llms.CallOption) (string, error) {
-	resp, err := f.GenerateContent(
-		ctx,
-		[]llms.MessageContent{{Role: llms.ChatMessageTypeHuman, Parts: []llms.ContentPart{llms.TextContent{Text: prompt}}}},
-		options...)
+	resp, err := f.GenerateContent(ctx, []llms.MessageContent{{Role: llms.ChatMessageTypeHuman, Parts: []llms.ContentPart{llms.TextContent{Text: prompt}}}}, options...)
 	if err != nil {
 		return "", err
 	}

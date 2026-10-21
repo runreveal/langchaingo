@@ -49,11 +49,7 @@ func (c *Cacher) Call(ctx context.Context, prompt string, options ...llms.CallOp
 // GenerateContent asks the model to generate content from a sequence of
 // messages. It's the most general interface for multi-modal LLMs that support
 // chat-like interactions.
-func (c *Cacher) GenerateContent(
-	ctx context.Context,
-	messages []llms.MessageContent,
-	options ...llms.CallOption,
-) (*llms.ContentResponse, error) {
+func (c *Cacher) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
 	var opts llms.CallOptions
 	for _, opt := range options {
 		opt(&opts)

@@ -192,8 +192,7 @@ func TestClient_RunInferenceWithProvider(t *testing.T) {
 	resp, err := client.RunInference(ctx, req)
 
 	// Skip test if provider is not available (404/403 error) or recording is missing
-	if err != nil &&
-		(strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "cached HTTP response not found")) {
+	if err != nil && (strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "cached HTTP response not found")) {
 		t.Skip("Provider not available or recording missing, skipping test")
 	}
 

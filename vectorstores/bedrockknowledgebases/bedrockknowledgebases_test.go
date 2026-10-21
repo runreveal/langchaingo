@@ -23,11 +23,7 @@ type testModel struct{}
 
 var _ llms.Model = testModel{}
 
-func (testModel) GenerateContent(
-	_ context.Context,
-	_ []llms.MessageContent,
-	_ ...llms.CallOption,
-) (*llms.ContentResponse, error) {
+func (testModel) GenerateContent(_ context.Context, _ []llms.MessageContent, _ ...llms.CallOption) (*llms.ContentResponse, error) {
 	return &llms.ContentResponse{
 		Choices: []*llms.ContentChoice{
 			{Content: "orange"},
@@ -46,11 +42,7 @@ type testBedrockAgent struct {
 
 var _ bedrockAgentAPI = &testBedrockAgent{}
 
-func (t *testBedrockAgent) GetKnowledgeBase(
-	_ context.Context,
-	_ *bedrockagent.GetKnowledgeBaseInput,
-	_ ...func(*bedrockagent.Options),
-) (*bedrockagent.GetKnowledgeBaseOutput, error) {
+func (t *testBedrockAgent) GetKnowledgeBase(_ context.Context, _ *bedrockagent.GetKnowledgeBaseInput, _ ...func(*bedrockagent.Options)) (*bedrockagent.GetKnowledgeBaseOutput, error) {
 	t.calls++
 	return &bedrockagent.GetKnowledgeBaseOutput{
 		KnowledgeBase: &types.KnowledgeBase{
@@ -59,11 +51,7 @@ func (t *testBedrockAgent) GetKnowledgeBase(
 	}, nil
 }
 
-func (t *testBedrockAgent) ListDataSources(
-	_ context.Context,
-	params *bedrockagent.ListDataSourcesInput,
-	_ ...func(*bedrockagent.Options),
-) (*bedrockagent.ListDataSourcesOutput, error) {
+func (t *testBedrockAgent) ListDataSources(_ context.Context, params *bedrockagent.ListDataSourcesInput, _ ...func(*bedrockagent.Options)) (*bedrockagent.ListDataSourcesOutput, error) {
 	t.calls++
 	switch aws.ToString(params.KnowledgeBaseId) {
 	case "testKbWithoutDatasources":
@@ -111,11 +99,7 @@ func (t *testBedrockAgent) ListDataSources(
 	}
 }
 
-func (t *testBedrockAgent) GetDataSource(
-	_ context.Context,
-	params *bedrockagent.GetDataSourceInput,
-	_ ...func(*bedrockagent.Options),
-) (*bedrockagent.GetDataSourceOutput, error) {
+func (t *testBedrockAgent) GetDataSource(_ context.Context, params *bedrockagent.GetDataSourceInput, _ ...func(*bedrockagent.Options)) (*bedrockagent.GetDataSourceOutput, error) {
 	t.mu.Lock()
 	t.calls++
 	t.mu.Unlock()
@@ -139,20 +123,12 @@ func (t *testBedrockAgent) GetDataSource(
 	}, nil
 }
 
-func (t *testBedrockAgent) IngestKnowledgeBaseDocuments(
-	_ context.Context,
-	_ *bedrockagent.IngestKnowledgeBaseDocumentsInput,
-	_ ...func(*bedrockagent.Options),
-) (*bedrockagent.IngestKnowledgeBaseDocumentsOutput, error) {
+func (t *testBedrockAgent) IngestKnowledgeBaseDocuments(_ context.Context, _ *bedrockagent.IngestKnowledgeBaseDocumentsInput, _ ...func(*bedrockagent.Options)) (*bedrockagent.IngestKnowledgeBaseDocumentsOutput, error) {
 	t.calls++
 	return &bedrockagent.IngestKnowledgeBaseDocumentsOutput{}, nil
 }
 
-func (t *testBedrockAgent) StartIngestionJob(
-	_ context.Context,
-	_ *bedrockagent.StartIngestionJobInput,
-	_ ...func(*bedrockagent.Options),
-) (*bedrockagent.StartIngestionJobOutput, error) {
+func (t *testBedrockAgent) StartIngestionJob(_ context.Context, _ *bedrockagent.StartIngestionJobInput, _ ...func(*bedrockagent.Options)) (*bedrockagent.StartIngestionJobOutput, error) {
 	t.calls++
 	return &bedrockagent.StartIngestionJobOutput{
 		IngestionJob: &types.IngestionJob{
@@ -161,11 +137,7 @@ func (t *testBedrockAgent) StartIngestionJob(
 	}, nil
 }
 
-func (t *testBedrockAgent) GetIngestionJob(
-	_ context.Context,
-	_ *bedrockagent.GetIngestionJobInput,
-	_ ...func(*bedrockagent.Options),
-) (*bedrockagent.GetIngestionJobOutput, error) {
+func (t *testBedrockAgent) GetIngestionJob(_ context.Context, _ *bedrockagent.GetIngestionJobInput, _ ...func(*bedrockagent.Options)) (*bedrockagent.GetIngestionJobOutput, error) {
 	t.calls++
 	return &bedrockagent.GetIngestionJobOutput{
 		IngestionJob: &types.IngestionJob{
@@ -178,11 +150,7 @@ type testBedrockAgentRuntime struct{ calls int }
 
 var _ bedrockAgentRuntimeAPI = &testBedrockAgentRuntime{}
 
-func (t *testBedrockAgentRuntime) Retrieve(
-	_ context.Context,
-	_ *bedrockagentruntime.RetrieveInput,
-	_ ...func(*bedrockagentruntime.Options),
-) (*bedrockagentruntime.RetrieveOutput, error) {
+func (t *testBedrockAgentRuntime) Retrieve(_ context.Context, _ *bedrockagentruntime.RetrieveInput, _ ...func(*bedrockagentruntime.Options)) (*bedrockagentruntime.RetrieveOutput, error) {
 	t.calls++
 	return &bedrockagentruntime.RetrieveOutput{
 		RetrievalResults: []runtimetypes.KnowledgeBaseRetrievalResult{
@@ -217,11 +185,7 @@ func (t *testS3Client) PutObject(_ context.Context, _ *s3.PutObjectInput, _ ...f
 	return &s3.PutObjectOutput{}, nil
 }
 
-func (t *testS3Client) DeleteObject(
-	_ context.Context,
-	_ *s3.DeleteObjectInput,
-	_ ...func(*s3.Options),
-) (*s3.DeleteObjectOutput, error) {
+func (t *testS3Client) DeleteObject(_ context.Context, _ *s3.DeleteObjectInput, _ ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
 	t.calls++
 	return &s3.DeleteObjectOutput{}, nil
 }
@@ -338,24 +302,9 @@ func TestKnowledgeBaseSimilaritySearch(t *testing.T) {
 	docs, err := kb.SimilaritySearch(ctx, "What color is the desk?", 5)
 	require.NoError(t, err)
 	require.Len(t, docs, 3, "expected 3 documents")
-	require.Equal(
-		t,
-		"The color of the house is blue.",
-		docs[0].PageContent,
-		"expected content to be 'The color of the house is blue.'",
-	)
-	require.Equal(
-		t,
-		"The color of the car is red.",
-		docs[1].PageContent,
-		"expected content to be 'The color of the car is red.'",
-	)
-	require.Equal(
-		t,
-		"The color of the desk is orange.",
-		docs[2].PageContent,
-		"expected content to be 'The color of the desk is orange.'",
-	)
+	require.Equal(t, "The color of the house is blue.", docs[0].PageContent, "expected content to be 'The color of the house is blue.'")
+	require.Equal(t, "The color of the car is red.", docs[1].PageContent, "expected content to be 'The color of the car is red.'")
+	require.Equal(t, "The color of the desk is orange.", docs[2].PageContent, "expected content to be 'The color of the desk is orange.'")
 }
 
 func TestKnowledgeBaseSimilaritySearchWithScoreThreshold(t *testing.T) {
@@ -367,18 +316,8 @@ func TestKnowledgeBaseSimilaritySearchWithScoreThreshold(t *testing.T) {
 	docs, err := kb.SimilaritySearch(ctx, "What color is the desk?", 5, vectorstores.WithScoreThreshold(0.8))
 	require.NoError(t, err)
 	require.Len(t, docs, 2, "expected 2 documents")
-	require.Equal(
-		t,
-		"The color of the house is blue.",
-		docs[0].PageContent,
-		"expected content to be 'The color of the house is blue.'",
-	)
-	require.Equal(
-		t,
-		"The color of the car is red.",
-		docs[1].PageContent,
-		"expected content to be 'The color of the car is red.'",
-	)
+	require.Equal(t, "The color of the house is blue.", docs[0].PageContent, "expected content to be 'The color of the house is blue.'")
+	require.Equal(t, "The color of the car is red.", docs[1].PageContent, "expected content to be 'The color of the car is red.'")
 }
 
 func TestKnowledgeBaseSimilaritySearchWithFilter(t *testing.T) {
@@ -387,12 +326,7 @@ func TestKnowledgeBaseSimilaritySearchWithFilter(t *testing.T) {
 
 	kb := newFromClients("testKbId", &testBedrockAgent{}, &testBedrockAgentRuntime{}, &testS3Client{})
 
-	_, err := kb.SimilaritySearch(
-		ctx,
-		"What color is the desk?",
-		5,
-		vectorstores.WithFilters(EqualsFilter{Key: "color", Value: "orange"}),
-	)
+	_, err := kb.SimilaritySearch(ctx, "What color is the desk?", 5, vectorstores.WithFilters(EqualsFilter{Key: "color", Value: "orange"}))
 	require.NoError(t, err)
 }
 
@@ -417,12 +351,7 @@ func newTrackSearchResults(kb *KnowledgeBase) *trackSearchResults {
 	return &trackSearchResults{kb, nil}
 }
 
-func (t *trackSearchResults) SimilaritySearch(
-	ctx context.Context,
-	query string,
-	k int,
-	options ...vectorstores.Option,
-) ([]schema.Document, error) {
+func (t *trackSearchResults) SimilaritySearch(ctx context.Context, query string, k int, options ...vectorstores.Option) ([]schema.Document, error) {
 	res, err := t.KnowledgeBase.SimilaritySearch(ctx, query, k, options...)
 	if err != nil {
 		return nil, err
@@ -450,24 +379,9 @@ func TestKnowledgeBaseAsRetriever(t *testing.T) {
 	require.Equal(t, "orange", result, "expected result to be orange")
 	require.Equal(t, 1, testBedrockAgentRuntime.calls, "expected testBedrockAgentRuntime to be called once")
 	require.Len(t, kb.track, 3, "expected 3 documents")
-	require.Equal(
-		t,
-		"The color of the house is blue.",
-		kb.track[0].PageContent,
-		"expected content to be 'The color of the house is blue.'",
-	)
-	require.Equal(
-		t,
-		"The color of the car is red.",
-		kb.track[1].PageContent,
-		"expected content to be 'The color of the car is red.'",
-	)
-	require.Equal(
-		t,
-		"The color of the desk is orange.",
-		kb.track[2].PageContent,
-		"expected content to be 'The color of the desk is orange.'",
-	)
+	require.Equal(t, "The color of the house is blue.", kb.track[0].PageContent, "expected content to be 'The color of the house is blue.'")
+	require.Equal(t, "The color of the car is red.", kb.track[1].PageContent, "expected content to be 'The color of the car is red.'")
+	require.Equal(t, "The color of the desk is orange.", kb.track[2].PageContent, "expected content to be 'The color of the desk is orange.'")
 }
 
 func TestKnowledgeBaseAsRetrieverWithScoreThreshold(t *testing.T) {
@@ -489,16 +403,6 @@ func TestKnowledgeBaseAsRetrieverWithScoreThreshold(t *testing.T) {
 	require.Equal(t, "orange", result, "expected result to be orange")
 	require.Equal(t, 1, testBedrockAgentRuntime.calls, "expected testBedrockAgentRuntime to be called once")
 	require.Len(t, kb.track, 2, "expected 2 documents")
-	require.Equal(
-		t,
-		"The color of the house is blue.",
-		kb.track[0].PageContent,
-		"expected content to be 'The color of the house is blue.'",
-	)
-	require.Equal(
-		t,
-		"The color of the car is red.",
-		kb.track[1].PageContent,
-		"expected content to be 'The color of the car is red.'",
-	)
+	require.Equal(t, "The color of the house is blue.", kb.track[0].PageContent, "expected content to be 'The color of the house is blue.'")
+	require.Equal(t, "The color of the car is red.", kb.track[1].PageContent, "expected content to be 'The color of the car is red.'")
 }

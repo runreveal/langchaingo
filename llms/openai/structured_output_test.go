@@ -145,10 +145,8 @@ func TestStructuredOutputFunctionCalling(t *testing.T) {
 			Parts: []llms.ContentPart{llms.TextContent{Text: "You are a helpful assistant"}},
 		},
 		{
-			Role: llms.ChatMessageTypeGeneric,
-			Parts: []llms.ContentPart{
-				llms.TextContent{Text: "What is the age of Bob Odenkirk, a famous comedy screenwriter and an actor."},
-			},
+			Role:  llms.ChatMessageTypeGeneric,
+			Parts: []llms.ContentPart{llms.TextContent{Text: "What is the age of Bob Odenkirk, a famous comedy screenwriter and an actor."}},
 		},
 	}
 

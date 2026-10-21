@@ -129,18 +129,7 @@ func TestClient_CreateEmbeddingWithDimensions(t *testing.T) {
 		apiKey = key
 	}
 
-	client, err := New(
-		apiKey,
-		"",
-		"",
-		"",
-		APITypeOpenAI,
-		"",
-		rr.Client(),
-		"text-embedding-3-small",
-		nil,
-		WithEmbeddingDimensions(256),
-	)
+	client, err := New(apiKey, "", "", "", APITypeOpenAI, "", rr.Client(), "text-embedding-3-small", nil, WithEmbeddingDimensions(256))
 	require.NoError(t, err)
 
 	req := &EmbeddingRequest{

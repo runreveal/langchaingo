@@ -327,9 +327,7 @@ func TestChatMessageHistory_SchemaValidation(t *testing.T) {
 					break
 				}
 				if actualType != expectedType {
-					err = errors.New(
-						"error, column '" + reqColumn + "' in table 'test' has type '" + actualType + "', but expected type '" + expectedType + "'",
-					)
+					err = errors.New("error, column '" + reqColumn + "' in table 'test' has type '" + actualType + "', but expected type '" + expectedType + "'")
 					break
 				}
 			}

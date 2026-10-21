@@ -72,8 +72,7 @@ func (c RueidisClient) CreateIndexIfNotExists(ctx context.Context, index string,
 	if err != nil {
 		return err
 	}
-	return c.client.Do(ctx, c.client.B().Arbitrary(createIndexCmd[0]).Keys(createIndexCmd[1]).Args(createIndexCmd[2:]...).Build()).
-		Error()
+	return c.client.Do(ctx, c.client.B().Arbitrary(createIndexCmd[0]).Keys(createIndexCmd[1]).Args(createIndexCmd[2:]...).Build()).Error()
 }
 
 func (c RueidisClient) AddDocWithHash(ctx context.Context, prefix string, doc schema.Document) (string, error) {

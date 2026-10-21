@@ -137,13 +137,7 @@ func TestApplyVectorIndexAndDropIndex(t *testing.T) {
 	envVariables := getEnvVariables(t)
 	vs, cleanUpTableFn := vectorStore(t, envVariables)
 	ctx := context.Background()
-	idx := vs.NewBaseIndex(
-		"testindex",
-		"hnsw",
-		cloudsql.CosineDistance{},
-		[]string{},
-		cloudsql.HNSWOptions{M: 4, EfConstruction: 16},
-	)
+	idx := vs.NewBaseIndex("testindex", "hnsw", cloudsql.CosineDistance{}, []string{}, cloudsql.HNSWOptions{M: 4, EfConstruction: 16})
 	err := vs.ApplyVectorIndex(ctx, idx, "testindex", false)
 	if err != nil {
 		t.Fatal(err)
@@ -163,13 +157,7 @@ func TestIsValidIndex(t *testing.T) {
 	envVariables := getEnvVariables(t)
 	vs, cleanUpTableFn := vectorStore(t, envVariables)
 	ctx := context.Background()
-	idx := vs.NewBaseIndex(
-		"testindex",
-		"hnsw",
-		cloudsql.CosineDistance{},
-		[]string{},
-		cloudsql.HNSWOptions{M: 4, EfConstruction: 16},
-	)
+	idx := vs.NewBaseIndex("testindex", "hnsw", cloudsql.CosineDistance{}, []string{}, cloudsql.HNSWOptions{M: 4, EfConstruction: 16})
 	err := vs.ApplyVectorIndex(ctx, idx, "testindex", false)
 	if err != nil {
 		t.Fatal(err)

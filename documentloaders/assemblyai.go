@@ -140,10 +140,7 @@ func (a *AssemblyAIAudioTranscriptLoader) transcribe(ctx context.Context) (assem
 
 // formatTranscript returns a schema.Document for a transcript based on the
 // specific format.
-func (a *AssemblyAIAudioTranscriptLoader) formatTranscript(
-	ctx context.Context,
-	transcript assemblyai.Transcript,
-) ([]schema.Document, error) {
+func (a *AssemblyAIAudioTranscriptLoader) formatTranscript(ctx context.Context, transcript assemblyai.Transcript) ([]schema.Document, error) {
 	switch a.format {
 	case TranscriptFormatSentences:
 		sentences, err := a.client.Transcripts.GetSentences(ctx, assemblyai.ToString(transcript.ID))
@@ -241,10 +238,7 @@ func toMetadata(obj any) (map[string]any, error) {
 
 // LoadAndSplit transcribes the audio data and splits it into multiple documents
 // using a text splitter.
-func (a *AssemblyAIAudioTranscriptLoader) LoadAndSplit(
-	ctx context.Context,
-	splitter textsplitter.TextSplitter,
-) ([]schema.Document, error) {
+func (a *AssemblyAIAudioTranscriptLoader) LoadAndSplit(ctx context.Context, splitter textsplitter.TextSplitter) ([]schema.Document, error) {
 	docs, err := a.Load(ctx)
 	if err != nil {
 		return nil, err

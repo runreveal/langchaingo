@@ -112,9 +112,7 @@ func TestAmazonOutput(t *testing.T) {
 		if err != nil {
 			// Check if this is a recording mismatch error
 			if strings.Contains(err.Error(), "cached HTTP response not found") {
-				t.Skip(
-					"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-				)
+				t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 			}
 			t.Fatal(err)
 		}
@@ -181,9 +179,7 @@ func TestAmazonNova(t *testing.T) {
 		if err != nil {
 			// Check if this is a recording mismatch error
 			if strings.Contains(err.Error(), "cached HTTP response not found") {
-				t.Skip(
-					"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-				)
+				t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 			}
 			t.Fatal(err)
 		}
@@ -256,9 +252,7 @@ func TestAnthropicNovaImage(t *testing.T) {
 		if err != nil {
 			// Check if this is a recording mismatch error
 			if strings.Contains(err.Error(), "cached HTTP response not found") {
-				t.Skip(
-					"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-				)
+				t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 			}
 			t.Fatal(err)
 		}

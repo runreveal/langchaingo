@@ -24,11 +24,7 @@ type ChatMessageHistory struct {
 var _ schema.ChatMessageHistory = &ChatMessageHistory{}
 
 // NewZepChatMessageHistory creates a new ZepChatMessageHistory using chat message options.
-func NewZepChatMessageHistory(
-	zep *zepClient.Client,
-	sessionID string,
-	options ...ChatMessageHistoryOption,
-) *ChatMessageHistory {
+func NewZepChatMessageHistory(zep *zepClient.Client, sessionID string, options ...ChatMessageHistoryOption) *ChatMessageHistory {
 	messageHistory := applyZepChatHistoryOptions(options...)
 	messageHistory.ZepClient = zep
 	messageHistory.SessionID = sessionID

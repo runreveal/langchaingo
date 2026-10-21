@@ -32,23 +32,16 @@ func TestAPIKeyTransport(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			originalURL := &url.URL{Scheme: "https", Host: "example.invalid", Path: "/v1/test", RawQuery: tt.rawQuery}
-			req := &http.Request{
-				Method: http.MethodGet,
-				URL:    originalURL,
-				Header: http.Header{"X-Goog-Api-Key": {"caller-header"}},
-			}
-			client := withAPIKey(
-				&http.Client{Transport: hardeningRoundTripFunc(func(got *http.Request) (*http.Response, error) {
-					if keys := got.URL.Query()["key"]; len(keys) != 1 || keys[0] != tt.wantKey {
-						t.Fatalf("keys=%q", keys)
-					}
-					if got.Header.Get("X-Goog-Api-Key") != "caller-header" {
-						t.Fatalf("X-Goog-Api-Key=%q", got.Header.Get("X-Goog-Api-Key"))
-					}
-					return emptyResponse(), nil
-				})},
-				tt.wantKey,
-			)
+			req := &http.Request{Method: http.MethodGet, URL: originalURL, Header: http.Header{"X-Goog-Api-Key": {"caller-header"}}}
+			client := withAPIKey(&http.Client{Transport: hardeningRoundTripFunc(func(got *http.Request) (*http.Response, error) {
+				if keys := got.URL.Query()["key"]; len(keys) != 1 || keys[0] != tt.wantKey {
+					t.Fatalf("keys=%q", keys)
+				}
+				if got.Header.Get("X-Goog-Api-Key") != "caller-header" {
+					t.Fatalf("X-Goog-Api-Key=%q", got.Header.Get("X-Goog-Api-Key"))
+				}
+				return emptyResponse(), nil
+			})}, tt.wantKey)
 			if _, err := client.Do(req); err != nil {
 				t.Fatal(err)
 			}
@@ -73,12 +66,7 @@ func TestAuthOptionPrecedence(t *testing.T) {
 		{"last API key", []Option{WithAPIKey("one"), WithAPIKey("two")}, authAPIKey, "two"},
 		{"credentials after key", []Option{WithAPIKey("one"), WithCredentialsJSON([]byte(`{}`))}, authCredentials, ""},
 		{"key after credentials", []Option{WithCredentialsJSON([]byte(`{}`)), WithAPIKey("two")}, authAPIKey, "two"},
-		{
-			"empty credentials ignored",
-			[]Option{WithAPIKey("one"), WithCredentialsJSON(nil), WithCredentialsFile("")},
-			authAPIKey,
-			"one",
-		},
+		{"empty credentials ignored", []Option{WithAPIKey("one"), WithCredentialsJSON(nil), WithCredentialsFile("")}, authAPIKey, "one"},
 		{"explicit empty key", []Option{WithAPIKey("")}, authAPIKey, ""},
 	}
 	for _, tt := range tests {
@@ -150,19 +138,9 @@ func TestGoogleAIEmbeddingRequestModelAndAuthentication(t *testing.T) {
 		u := *req.URL
 		requestURL = &u
 		body := `{"embeddings":[{"values":[1]}]}`
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Header:     make(http.Header),
-			Body:       io.NopCloser(strings.NewReader(body)),
-			Request:    req,
-		}, nil
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: req}, nil
 	})
-	client, err := New(
-		context.Background(),
-		WithRest(),
-		WithAPIKey("wire-key"),
-		WithHTTPClient(&http.Client{Transport: transport}),
-	)
+	client, err := New(context.Background(), WithRest(), WithAPIKey("wire-key"), WithHTTPClient(&http.Client{Transport: transport}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,12 +166,7 @@ func TestCustomEndpointKeepsClientAndAPIKey(t *testing.T) {
 	caller.Transport = hardeningRoundTripFunc(func(req *http.Request) (*http.Response, error) {
 		got = req.Clone(req.Context())
 		body := `{"embeddings":[{"values":[1]}]}`
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Header:     make(http.Header),
-			Body:       io.NopCloser(strings.NewReader(body)),
-			Request:    req,
-		}, nil
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: req}, nil
 	})
 	endpoint := func(o *Options) {
 		o.ClientOptions = append(o.ClientOptions, option.WithEndpoint("custom.invalid"))
@@ -249,19 +222,9 @@ func TestGenerateContentEmptyStream(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			transport := hardeningRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Header:     make(http.Header),
-					Body:       io.NopCloser(strings.NewReader("[]")),
-					Request:    req,
-				}, nil
+				return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("[]")), Request: req}, nil
 			})
-			client, err := New(
-				context.Background(),
-				WithRest(),
-				WithAPIKey("wire-key"),
-				WithHTTPClient(&http.Client{Transport: transport}),
-			)
+			client, err := New(context.Background(), WithRest(), WithAPIKey("wire-key"), WithHTTPClient(&http.Client{Transport: transport}))
 			if err != nil {
 				t.Fatal(err)
 			}

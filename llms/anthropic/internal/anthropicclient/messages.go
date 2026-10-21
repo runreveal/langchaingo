@@ -317,11 +317,7 @@ func (c *Client) setMessageDefaults(payload *messagePayload) {
 	}
 }
 
-func (c *Client) createMessage(
-	ctx context.Context,
-	payload *messagePayload,
-	betaHeaders []string,
-) (*MessageResponsePayload, error) {
+func (c *Client) createMessage(ctx context.Context, payload *messagePayload, betaHeaders []string) (*MessageResponsePayload, error) {
 	c.setMessageDefaults(payload)
 
 	payloadBytes, err := json.Marshal(payload)
@@ -356,11 +352,7 @@ type MessageEvent struct {
 	Err      error
 }
 
-func parseStreamingMessageResponse(
-	ctx context.Context,
-	r *http.Response,
-	payload *messagePayload,
-) (*MessageResponsePayload, error) {
+func parseStreamingMessageResponse(ctx context.Context, r *http.Response, payload *messagePayload) (*MessageResponsePayload, error) {
 	scanner := bufio.NewScanner(r.Body)
 	eventChan := make(chan MessageEvent)
 
@@ -405,13 +397,7 @@ func parseStreamEvent(data string) (map[string]interface{}, error) {
 	return event, err
 }
 
-func processStreamEvent(
-	ctx context.Context,
-	event map[string]interface{},
-	payload *messagePayload,
-	response MessageResponsePayload,
-	eventChan chan<- MessageEvent,
-) (MessageResponsePayload, error) {
+func processStreamEvent(ctx context.Context, event map[string]interface{}, payload *messagePayload, response MessageResponsePayload, eventChan chan<- MessageEvent) (MessageResponsePayload, error) {
 	eventType, ok := event["type"].(string)
 	if !ok {
 		return response, ErrInvalidEventType
@@ -472,10 +458,7 @@ func handleMessageStartEvent(event map[string]interface{}, response MessageRespo
 	return response, nil
 }
 
-func handleContentBlockStartEvent(
-	event map[string]interface{},
-	response MessageResponsePayload,
-) (MessageResponsePayload, error) {
+func handleContentBlockStartEvent(event map[string]interface{}, response MessageResponsePayload) (MessageResponsePayload, error) {
 	indexValue, ok := event["index"].(float64)
 	if !ok {
 		return response, ErrInvalidIndexField
@@ -533,12 +516,7 @@ func handleContentBlockStartEvent(
 }
 
 // handleContentBlockDeltaEvent processes delta events for content blocks, handling both text and JSON deltas.
-func handleContentBlockDeltaEvent(
-	ctx context.Context,
-	event map[string]interface{},
-	response MessageResponsePayload,
-	payload *messagePayload,
-) (MessageResponsePayload, error) {
+func handleContentBlockDeltaEvent(ctx context.Context, event map[string]interface{}, response MessageResponsePayload, payload *messagePayload) (MessageResponsePayload, error) {
 	indexValue, ok := event["index"].(float64)
 	if !ok {
 		return response, ErrInvalidIndexField
@@ -573,13 +551,7 @@ func handleContentBlockDeltaEvent(
 }
 
 // handleTextDelta processes text delta events for content blocks.
-func handleTextDelta(
-	ctx context.Context,
-	delta map[string]interface{},
-	response MessageResponsePayload,
-	payload *messagePayload,
-	index int,
-) (MessageResponsePayload, error) {
+func handleTextDelta(ctx context.Context, delta map[string]interface{}, response MessageResponsePayload, payload *messagePayload, index int) (MessageResponsePayload, error) {
 	text, ok := delta["text"].(string)
 	if !ok {
 		return response, ErrInvalidDeltaTextField
@@ -617,13 +589,7 @@ func handleJSONDelta(delta map[string]interface{}, response MessageResponsePaylo
 }
 
 // handleThinkingDelta processes thinking delta events for content blocks.
-func handleThinkingDelta(
-	ctx context.Context,
-	delta map[string]interface{},
-	response MessageResponsePayload,
-	payload *messagePayload,
-	index int,
-) (MessageResponsePayload, error) {
+func handleThinkingDelta(ctx context.Context, delta map[string]interface{}, response MessageResponsePayload, payload *messagePayload, index int) (MessageResponsePayload, error) {
 	thinking, ok := delta["thinking"].(string)
 	if !ok {
 		return response, ErrInvalidDeltaTextField
@@ -649,11 +615,7 @@ func handleThinkingDelta(
 
 // handleCompactionDelta processes compaction delta events. The entire summary
 // arrives in a single delta (no intermediate streaming).
-func handleCompactionDelta(
-	delta map[string]interface{},
-	response MessageResponsePayload,
-	index int,
-) (MessageResponsePayload, error) {
+func handleCompactionDelta(delta map[string]interface{}, response MessageResponsePayload, index int) (MessageResponsePayload, error) {
 	content, ok := delta["content"].(string)
 	if !ok {
 		return response, fmt.Errorf("%w: missing content in compaction_delta", ErrInvalidDeltaField)

@@ -25,19 +25,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Lint tools (golangci-lint, golines) are pinned in tools.mod. setup-go's
-      # go-version-file only parses files named go.mod, so read the version here.
-      - name: Read tools.mod Go version
-        id: tools-go
-        run: echo "version=$(awk '/^go /{print $2}' tools.mod)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@v5
         with:
-          go-version: ${{ steps.tools-go.outputs.version }}
+          go-version-file: go.mod
           cache: true
-          cache-dependency-path: tools.sum
           check-latest: false
-      - name: Lint
-        run: make lint
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.9.0
+          args: --timeout=5m
+          skip-cache: false
   
   build:
     name: build

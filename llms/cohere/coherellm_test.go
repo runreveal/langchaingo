@@ -207,12 +207,7 @@ func TestGenerateContentRejectsInvalidInput(t *testing.T) {
 				t.Fatalf("GenerateContent() error = %v, want %v", err, tt.want)
 			}
 			if h.generateStartCalled || h.generateEndCalled || h.errorCalled {
-				t.Fatalf(
-					"callbacks fired for invalid input: start=%v end=%v error=%v",
-					h.generateStartCalled,
-					h.generateEndCalled,
-					h.errorCalled,
-				)
+				t.Fatalf("callbacks fired for invalid input: start=%v end=%v error=%v", h.generateStartCalled, h.generateEndCalled, h.errorCalled)
 			}
 		})
 	}

@@ -91,9 +91,7 @@ func TestConstitutionalChain(t *testing.T) {
 		// reports a replay miss as a network error.
 		if strings.Contains(err.Error(), "cached HTTP response not found") ||
 			(rr.Replaying() && strings.Contains(err.Error(), "network error")) {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}

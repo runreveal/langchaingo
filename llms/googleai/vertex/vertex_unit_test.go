@@ -703,21 +703,10 @@ func TestConvertAndStreamFromIterator(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Header:     http.Header{"Content-Type": {"application/json"}},
-					Body:       io.NopCloser(strings.NewReader(tt.body)),
-					Request:    req,
-				}, nil
+				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(tt.body)), Request: req}, nil
 			})
 			ctx := context.Background()
-			client, err := genai.NewClient(
-				ctx,
-				"test-project",
-				"us-central1",
-				genai.WithREST(),
-				option.WithHTTPClient(&http.Client{Transport: transport}),
-			)
+			client, err := genai.NewClient(ctx, "test-project", "us-central1", genai.WithREST(), option.WithHTTPClient(&http.Client{Transport: transport}))
 			if err != nil {
 				t.Fatal(err)
 			}

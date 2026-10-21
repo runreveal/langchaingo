@@ -67,11 +67,7 @@ func NewMapRerankDocuments(mapRerankLLMChain *LLMChain) *MapRerankDocuments {
 }
 
 // Call handles the inner logic of the MapRerankDocuments chain.
-func (c MapRerankDocuments) Call(
-	ctx context.Context,
-	values map[string]any,
-	options ...ChainCallOption,
-) (map[string]any, error) { //nolint:lll
+func (c MapRerankDocuments) Call(ctx context.Context, values map[string]any, options ...ChainCallOption) (map[string]any, error) { //nolint:lll
 	// Get the documents from the input key.
 	docs, ok := values[c.InputKey].([]schema.Document)
 

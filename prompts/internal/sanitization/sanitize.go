@@ -109,3 +109,4 @@ func isValidIdentifier(name string) bool {
 
 	return true
 }
+
