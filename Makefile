@@ -13,8 +13,8 @@ help:
 	@echo "  test-record    - Run tests with re-recording of httprr files"
 	@echo ""
 	@echo "Code Quality:"
-	@echo "  lint           - Check line lengths and run golangci-lint"
-	@echo "  fix            - Auto-fix lint issues (alias: lint-fix); 'make fix lint' to fix then re-check"
+	@echo "  lint           - Run linter with auto-installation if needed"
+	@echo "  lint-fix       - Run linter with automatic fixes"
 	@echo "  lint-testing   - Check test patterns and practices (httprr, etc.)"
 	@echo "  lint-testing-fix - Check and attempt to fix test patterns"
 	@echo "  lint-architecture - Check architectural rules and patterns"
@@ -36,34 +36,33 @@ test:
 	TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="/var/run/docker.sock" \
 	go test ./...
 
-# Lint tooling is pinned in tools.mod (same setup and versions as the runreveal repo).
-GO_TOOL := go tool -modfile=tools.mod
-GOLANG_CI := $(GO_TOOL) golangci-lint
-GOLINES := $(GO_TOOL) golines
-GO_FILES := find . -name "*.go" -not -path "./examples/*" -not -path "./docs/*" -print0
-
 .PHONY: lint
-lint: fmtcheck
-	$(GOLANG_CI) run --timeout 5m ./...
-
-.PHONY: fmtcheck
-# Any files with really long lines?
-fmtcheck:
-	! $(GO_FILES) | xargs -0 -P 8 -I {} $(GOLINES) --base-formatter="gofmt" --max-len 128 -l {} | grep .
-
-# Auto-fix what can be fixed: wrap long lines, then apply golangci-lint fixes.
-# Usage: make fix (or make fix lint to fix and then re-check)
-.PHONY: fix lint-fix
-fix lint-fix:
-	$(GO_FILES) | xargs -0 -P 8 -I {} $(GOLINES) --base-formatter="gofmt" --max-len 128 -w {}
-	$(GOLANG_CI) run --fix --timeout 5m ./...
+lint: lint-deps
+	golangci-lint run --color=always ./...
 
 .PHONY: lint-exp
 lint-exp:
-	$(GOLANG_CI) run --fix --config .golangci-exp.yaml ./...
+	golangci-lint run --fix --config .golangci-exp.yaml ./...
+
+.PHONY: lint-fix
+lint-fix:
+	golangci-lint run --fix ./...
 
 .PHONY: lint-all
-lint-all: lint
+lint-all:
+	golangci-lint run --color=always ./...
+
+.PHONY: lint-deps
+lint-deps:
+	@command -v golangci-lint >/dev/null 2>&1 || { \
+		echo >&2 "golangci-lint not found. Installing..."; \
+		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.3.0; \
+		command -v golangci-lint >/dev/null 2>&1 || { \
+			echo >&2 "Failed to detect golangci-lint after installation. Please check your Go installation and PATH."; \
+			exit 1; \
+		} \
+	}
+	@golangci-lint version | grep -qE "version v?2" || { echo "Error: golangci-lint v2.x.x required, found:" && golangci-lint version && exit 1; }
 
 .PHONY: docs
 docs:
@@ -104,7 +103,7 @@ clean: clean-lint-cache
 
 .PHONY: clean-lint-cache
 clean-lint-cache:
-	$(GOLANG_CI) cache clean
+	golangci-lint cache clean
 
 .PHONY: build-examples
 build-examples:

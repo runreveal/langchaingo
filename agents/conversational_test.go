@@ -57,13 +57,11 @@ func TestConversationalWithMemory(t *testing.T) {
 	ctx := context.Background()
 	res, err := chains.Run(ctx, executor, "Hi! my name is Bob and the year I was born is 1987")
 	if err != nil {
-		// Check if this is a recording mismatch error
-		// The openai client masks httprr replay misses as a generic network error.
+		// Check if this is a recording mismatch error. The openai client
+		// reports a replay miss as a network error.
 		if strings.Contains(err.Error(), "cached HTTP response not found") ||
-			strings.Contains(err.Error(), "failed to reach API server") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			(rr.Replaying() && strings.Contains(err.Error(), "network error")) {
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}

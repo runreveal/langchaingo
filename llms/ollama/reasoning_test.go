@@ -2,7 +2,6 @@ package ollama
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -138,16 +137,8 @@ func TestOllama_ContextCache(t *testing.T) {
 }
 
 func TestOllama_ReasoningIntegration(t *testing.T) {
-	// Skip if Ollama is not available
-	serverURL := os.Getenv("OLLAMA_HOST")
-	if serverURL == "" {
-		serverURL = "http://localhost:11434"
-	}
-	skipIfServerUnavailable(t, serverURL)
-
-	// Try to create client
 	llm, err := New(
-		WithServerURL(serverURL),
+		WithServerURL(liveServerURL(t)),
 		WithModel("deepseek-r1:latest"), // Use a reasoning model if available
 	)
 	if err != nil {
@@ -201,15 +192,8 @@ func TestOllama_ReasoningIntegration(t *testing.T) {
 }
 
 func TestOllama_CachingIntegration(t *testing.T) {
-	// Skip if Ollama is not available
-	serverURL := os.Getenv("OLLAMA_HOST")
-	if serverURL == "" {
-		serverURL = "http://localhost:11434"
-	}
-	skipIfServerUnavailable(t, serverURL)
-
 	llm, err := New(
-		WithServerURL(serverURL),
+		WithServerURL(liveServerURL(t)),
 		WithModel("llama3:latest"), // Use any available model
 	)
 	if err != nil {

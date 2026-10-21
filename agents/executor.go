@@ -47,11 +47,7 @@ func NewExecutor(agent Agent, opts ...Option) *Executor {
 	}
 }
 
-func (e *Executor) Call(
-	ctx context.Context,
-	inputValues map[string]any,
-	options ...chains.ChainCallOption,
-) (map[string]any, error) { //nolint:lll
+func (e *Executor) Call(ctx context.Context, inputValues map[string]any, options ...chains.ChainCallOption) (map[string]any, error) { //nolint:lll
 	inputs, err := inputsToString(inputValues)
 	if err != nil {
 		return nil, err

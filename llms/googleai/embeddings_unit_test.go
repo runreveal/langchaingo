@@ -21,10 +21,7 @@ func (m *MockEmbeddingModel) NewBatch() *MockBatchEmbedder {
 	return args.Get(0).(*MockBatchEmbedder)
 }
 
-func (m *MockEmbeddingModel) BatchEmbedContents(
-	ctx context.Context,
-	batch *MockBatchEmbedder,
-) (*genai.BatchEmbedContentsResponse, error) {
+func (m *MockEmbeddingModel) BatchEmbedContents(ctx context.Context, batch *MockBatchEmbedder) (*genai.BatchEmbedContentsResponse, error) {
 	args := m.Called(ctx, batch)
 	return args.Get(0).(*genai.BatchEmbedContentsResponse), args.Error(1)
 }

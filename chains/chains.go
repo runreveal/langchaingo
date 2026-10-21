@@ -27,12 +27,7 @@ type Chain interface {
 }
 
 // Call is the standard function used for executing chains.
-func Call(
-	ctx context.Context,
-	c Chain,
-	inputValues map[string]any,
-	options ...ChainCallOption,
-) (map[string]any, error) { // nolint: lll
+func Call(ctx context.Context, c Chain, inputValues map[string]any, options ...ChainCallOption) (map[string]any, error) { // nolint: lll
 	fullValues := make(map[string]any, 0)
 	for key, value := range inputValues {
 		fullValues[key] = value
@@ -170,13 +165,7 @@ type applyResult struct {
 }
 
 // Apply executes the chain for each of the inputs asynchronously.
-func Apply(
-	ctx context.Context,
-	c Chain,
-	inputValues []map[string]any,
-	maxWorkers int,
-	options ...ChainCallOption,
-) ([]map[string]any, error) { // nolint:lll
+func Apply(ctx context.Context, c Chain, inputValues []map[string]any, maxWorkers int, options ...ChainCallOption) ([]map[string]any, error) { // nolint:lll
 	if maxWorkers <= 0 {
 		maxWorkers = _defaultApplyMaxNumberWorkers
 	}
@@ -228,11 +217,7 @@ func sendApplyInputJobs(inputJobs chan applyInputJob, inputValues []map[string]a
 	close(inputJobs)
 }
 
-func getApplyResults(
-	ctx context.Context,
-	resultsChan chan applyResult,
-	inputValues []map[string]any,
-) ([]map[string]any, error) { //nolint:lll
+func getApplyResults(ctx context.Context, resultsChan chan applyResult, inputValues []map[string]any) ([]map[string]any, error) { //nolint:lll
 	results := make([]map[string]any, len(inputValues))
 	for range results {
 		select {

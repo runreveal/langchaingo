@@ -286,12 +286,7 @@ func convertArray(value []string) interface{} {
 	return newArray
 }
 
-func (c *PaLMClient) batchPredict(
-	ctx context.Context,
-	model string,
-	prompts []string,
-	params map[string]interface{},
-) ([]*structpb.Value, error) { //nolint:lll
+func (c *PaLMClient) batchPredict(ctx context.Context, model string, prompts []string, params map[string]interface{}) ([]*structpb.Value, error) { //nolint:lll
 	mergedParams := mergeParams(defaultParameters, params)
 	instances := []*structpb.Value{}
 	for _, prompt := range prompts {

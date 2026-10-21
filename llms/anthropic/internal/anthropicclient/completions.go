@@ -50,7 +50,7 @@ func (c *Client) setCompletionDefaults(payload *completionPayload) {
 		payload.Model = c.Model
 	// Fallback: use the default model
 	default:
-		payload.Model = defaultModel
+		payload.Model = DefaultModel
 	}
 	if payload.StreamingFunc != nil {
 		payload.Stream = true
@@ -93,11 +93,7 @@ type CompletionEvent struct {
 	Err      error
 }
 
-func parseStreamingCompletionResponse(
-	ctx context.Context,
-	r *http.Response,
-	payload *completionPayload,
-) (*CompletionResponsePayload, error) { // nolint:lll
+func parseStreamingCompletionResponse(ctx context.Context, r *http.Response, payload *completionPayload) (*CompletionResponsePayload, error) { // nolint:lll
 	scanner := bufio.NewScanner(r.Body)
 	responseChan := make(chan CompletionEvent)
 	go func() {

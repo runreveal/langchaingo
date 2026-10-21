@@ -78,9 +78,7 @@ func (client *Client) Search(ctx context.Context, query string) (string, error) 
 
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(
-			response.Body,
-		) // body just used to populate an error message. No point capturing any errors reading from body
+		b, _ := io.ReadAll(response.Body) // body just used to populate an error message. No point capturing any errors reading from body
 		return "", fmt.Errorf("duckduckgo api responded with %d: %s", response.StatusCode, string(b))
 	}
 

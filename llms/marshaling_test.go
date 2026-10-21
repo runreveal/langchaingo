@@ -397,11 +397,7 @@ role: user
 			in: MessageContent{
 				Role: "assistant",
 				Parts: []ContentPart{
-					ToolCall{
-						Type:         "function",
-						ID:           "t01",
-						FunctionCall: &FunctionCall{Name: "get_current_weather", Arguments: `{ "location": "New York" }`},
-					},
+					ToolCall{Type: "function", ID: "t01", FunctionCall: &FunctionCall{Name: "get_current_weather", Arguments: `{ "location": "New York" }`}},
 				},
 			},
 		},
@@ -410,16 +406,8 @@ role: user
 			in: MessageContent{
 				Role: "assistant",
 				Parts: []ContentPart{
-					ToolCall{
-						Type:         "function",
-						ID:           "tc01",
-						FunctionCall: &FunctionCall{Name: "get_current_weather", Arguments: `{ "location": "New York" }`},
-					},
-					ToolCall{
-						Type:         "function",
-						ID:           "tc02",
-						FunctionCall: &FunctionCall{Name: "get_current_weather", Arguments: `{ "location": "Berlin" }`},
-					},
+					ToolCall{Type: "function", ID: "tc01", FunctionCall: &FunctionCall{Name: "get_current_weather", Arguments: `{ "location": "New York" }`}},
+					ToolCall{Type: "function", ID: "tc02", FunctionCall: &FunctionCall{Name: "get_current_weather", Arguments: `{ "location": "Berlin" }`}},
 				},
 			},
 			assertedJSON: `{"role":"assistant","parts":[{"type":"tool_call","tool_call":{"function":{"name":"get_current_weather","arguments":"{ \"location\": \"New York\" }"},"id":"tc01","type":"function"}},{"type":"tool_call","tool_call":{"function":{"name":"get_current_weather","arguments":"{ \"location\": \"Berlin\" }"},"id":"tc02","type":"function"}}]}`,
@@ -455,10 +443,7 @@ role: assistant
 			in: MessageContent{
 				Role: "assistant",
 				Parts: []ContentPart{
-					ToolCall{
-						Type:         "hammer",
-						FunctionCall: &FunctionCall{Name: "hit", Arguments: `{ "force": 10, "direction": "down" }`},
-					},
+					ToolCall{Type: "hammer", FunctionCall: &FunctionCall{Name: "hit", Arguments: `{ "force": 10, "direction": "down" }`}},
 				},
 			},
 		},
@@ -544,6 +529,56 @@ role: assistant
 			}
 			if diff := cmp.Diff(tt.in, mc); diff != "" {
 				t.Errorf("Roundtrip YAML mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestToolCallJSONRoundTrip(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		in   ToolCall
+	}{
+		{"function", ToolCall{ID: "c1", Type: "function", FunctionCall: &FunctionCall{Name: "calc", Arguments: `{"x":1}`}}},
+		{"no function", ToolCall{ID: "c2", Type: "function", FunctionCall: &FunctionCall{}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			data, err := json.Marshal(tt.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := ToolCall{ID: "stale", FunctionCall: &FunctionCall{Name: "stale"}}
+			if err := json.Unmarshal(data, &got); err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tt.in, got); diff != "" {
+				t.Errorf("round trip of %s mismatch (-want +got):\n%s", data, diff)
+			}
+		})
+	}
+}
+
+func TestToolCallUnmarshalJSONErrors(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		in   string
+	}{
+		{"missing type", `{"tool_call":{"id":"c1","type":"function"}}`},
+		{"missing tool_call", `{"type":"tool_call"}`},
+		{"missing id", `{"type":"tool_call","tool_call":{"type":"function"}}`},
+		{"missing tool type", `{"type":"tool_call","tool_call":{"id":"c1"}}`},
+		{"wrong id type", `{"type":"tool_call","tool_call":{"id":1,"type":"function"}}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var tc ToolCall
+			if err := json.Unmarshal([]byte(tt.in), &tc); err == nil {
+				t.Errorf("Unmarshal(%s) succeeded, want error", tt.in)
 			}
 		})
 	}

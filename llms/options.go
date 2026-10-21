@@ -204,9 +204,7 @@ func WithStreamingFunc(streamingFunc func(ctx context.Context, chunk []byte) err
 }
 
 // WithStreamingReasoningFunc specifies the streaming reasoning function to use.
-func WithStreamingReasoningFunc(
-	streamingReasoningFunc func(ctx context.Context, reasoningChunk, chunk []byte) error,
-) CallOption {
+func WithStreamingReasoningFunc(streamingReasoningFunc func(ctx context.Context, reasoningChunk, chunk []byte) error) CallOption {
 	return func(o *CallOptions) {
 		o.StreamingReasoningFunc = streamingReasoningFunc
 	}

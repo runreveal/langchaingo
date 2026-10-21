@@ -23,12 +23,7 @@ type SequentialChain struct {
 	memory     schema.Memory
 }
 
-func NewSequentialChain(
-	chains []Chain,
-	inputKeys []string,
-	outputKeys []string,
-	opts ...SequentialChainOption,
-) (*SequentialChain, error) { //nolint:lll
+func NewSequentialChain(chains []Chain, inputKeys []string, outputKeys []string, opts ...SequentialChainOption) (*SequentialChain, error) { //nolint:lll
 	s := &SequentialChain{
 		chains:     chains,
 		inputKeys:  inputKeys,
@@ -56,9 +51,7 @@ func (c *SequentialChain) validateSeqChain() error {
 	if len(overlappingKeys) > 0 {
 		return fmt.Errorf(
 			"%w: input keys [%v] also exist in the memory keys: [%v] - please use input keys and memory keys that don't overlap",
-			ErrChainInitialization,
-			strings.Join(overlappingKeys, delimiter),
-			strings.Join(memoryKeys, delimiter),
+			ErrChainInitialization, strings.Join(overlappingKeys, delimiter), strings.Join(memoryKeys, delimiter),
 		)
 	}
 
@@ -73,9 +66,7 @@ func (c *SequentialChain) validateSeqChain() error {
 		if len(missingKeys) > 0 {
 			return fmt.Errorf(
 				"%w: missing required input keys: [%v], only had: [%v]",
-				ErrChainInitialization,
-				strings.Join(missingKeys, delimiter),
-				strings.Join(maputil.ListKeys(knownKeys), delimiter),
+				ErrChainInitialization, strings.Join(missingKeys, delimiter), strings.Join(maputil.ListKeys(knownKeys), delimiter),
 			)
 		}
 
@@ -107,11 +98,7 @@ func (c *SequentialChain) validateSeqChain() error {
 // Call runs the logic of the chains and returns the outputs. This method should
 // not be called directly. Use rather the Call, Run or Predict functions that
 // handles the memory and other aspects of the chain.
-func (c *SequentialChain) Call(
-	ctx context.Context,
-	inputs map[string]any,
-	options ...ChainCallOption,
-) (map[string]any, error) { //nolint:lll
+func (c *SequentialChain) Call(ctx context.Context, inputs map[string]any, options ...ChainCallOption) (map[string]any, error) { //nolint:lll
 	var outputs map[string]any
 	var err error
 	for _, chain := range c.chains {
@@ -188,11 +175,7 @@ func validateSimpleSeq(chains []Chain) error {
 // Call runs the logic of the chains and returns the output.
 // This method should not be called directly.
 // Use the Run function that handles the memory and other aspects of the chain.
-func (c *SimpleSequentialChain) Call(
-	ctx context.Context,
-	inputs map[string]any,
-	options ...ChainCallOption,
-) (map[string]any, error) { //nolint:lll
+func (c *SimpleSequentialChain) Call(ctx context.Context, inputs map[string]any, options ...ChainCallOption) (map[string]any, error) { //nolint:lll
 	input := inputs[input]
 	for _, chain := range c.chains {
 		var err error

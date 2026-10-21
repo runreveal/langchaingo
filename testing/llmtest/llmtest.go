@@ -661,6 +661,7 @@ func ValidateLLM(model llms.Model) error {
 }
 
 // MockLLM provides a simple mock implementation for testing.
+// It is safe for concurrent use.
 type MockLLM struct {
 	// Response to return from Call
 	CallResponse string
@@ -676,7 +677,7 @@ type MockLLM struct {
 	LastPrompt    string
 	LastMessages  []llms.MessageContent
 
-	mu sync.Mutex
+	mu sync.Mutex // guards the call tracking fields
 }
 
 // Call implements llms.Model
@@ -689,15 +690,11 @@ func (m *MockLLM) Call(ctx context.Context, prompt string, options ...llms.CallO
 }
 
 // GenerateContent implements llms.Model
-func (m *MockLLM) GenerateContent(
-	ctx context.Context,
-	messages []llms.MessageContent,
-	options ...llms.CallOption,
-) (*llms.ContentResponse, error) {
+func (m *MockLLM) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.GenerateCount++
 	m.LastMessages = messages
+	m.mu.Unlock()
 
 	if m.GenerateResponse != nil {
 		return m.GenerateResponse, m.GenerateError
@@ -714,11 +711,7 @@ func (m *MockLLM) GenerateContent(
 }
 
 // GenerateContentStream implements streaming
-func (m *MockLLM) GenerateContentStream(
-	ctx context.Context,
-	messages []llms.MessageContent,
-	options ...llms.CallOption,
-) (<-chan llms.ContentResponse, error) {
+func (m *MockLLM) GenerateContentStream(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (<-chan llms.ContentResponse, error) {
 	// Create a channel and send the mock response
 	ch := make(chan llms.ContentResponse, 1)
 

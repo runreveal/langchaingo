@@ -34,11 +34,7 @@ func NewLLMMathChain(llm llms.Model) LLMMathChain {
 }
 
 // Call runs the logic of the LLM Math chain and returns the output.
-func (c LLMMathChain) Call(
-	ctx context.Context,
-	values map[string]any,
-	options ...ChainCallOption,
-) (map[string]any, error) { // nolint: lll
+func (c LLMMathChain) Call(ctx context.Context, values map[string]any, options ...ChainCallOption) (map[string]any, error) { // nolint: lll
 	question, ok := values["question"].(string)
 	if !ok {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidInputValues, ErrInputValuesWrongType)

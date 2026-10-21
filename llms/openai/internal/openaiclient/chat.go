@@ -112,9 +112,9 @@ func (r ChatRequest) MarshalJSON() ([]byte, error) {
 		Alias: (*Alias)(&r),
 	}
 
-	// Handle temperature for reasoning models
-	if isReasoningModel(r.Model) {
-		// Reasoning models (GPT-5, o1, o3) only accept temperature=1 (default)
+	// Handle temperature for reasoning and search-preview models
+	if isReasoningModel(r.Model) || isSearchPreviewModel(r.Model) {
+		// These models reject non-default temperature values.
 		// Omit temperature field to let API use its default value
 		aux.Temperature = nil
 	} else {
@@ -192,6 +192,12 @@ func gptVersion(model string) (major, minor int, ok bool) {
 		}
 	}
 	return major, minor, true
+}
+
+// isSearchPreviewModel reports whether model is a search-preview model,
+// including dated snapshots such as gpt-4o-search-preview-2025-03-11.
+func isSearchPreviewModel(model string) bool {
+	return strings.Contains(model, "-search-preview")
 }
 
 // isReasoningModel returns true if the model is a reasoning model that has temperature constraints.
@@ -748,9 +754,7 @@ func combineStreamingChatResponse(
 		}
 		choice := streamResponse.Choices[0]
 		chunk := []byte(choice.Delta.Content)
-		reasoningChunk := []byte(
-			choice.Delta.ReasoningContent,
-		) // TODO: not sure if there will be any reasoning related to function call later, so just pass it here
+		reasoningChunk := []byte(choice.Delta.ReasoningContent) // TODO: not sure if there will be any reasoning related to function call later, so just pass it here
 		response.Choices[0].Message.Content += choice.Delta.Content
 		response.Choices[0].FinishReason = choice.FinishReason
 		response.Choices[0].Message.ReasoningContent += choice.Delta.ReasoningContent

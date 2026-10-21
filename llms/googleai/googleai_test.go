@@ -1,7 +1,9 @@
 package googleai
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,6 +26,21 @@ func hasExistingRecording(t *testing.T) bool {
 	return err == nil
 }
 
+// compactJSONBody removes the whitespace that protojson inserts, which varies
+// between builds, so request bodies match their recordings.
+func compactJSONBody(req *http.Request) error {
+	body, ok := req.Body.(*httprr.Body)
+	if !ok || !json.Valid(body.Data) {
+		return nil
+	}
+	var buf bytes.Buffer
+	if err := json.Compact(&buf, body.Data); err != nil {
+		return err
+	}
+	body.Data = buf.Bytes()
+	return nil
+}
+
 func newHTTPRRClient(t *testing.T, opts ...Option) *GoogleAI {
 	t.Helper()
 
@@ -38,9 +55,9 @@ func newHTTPRRClient(t *testing.T, opts ...Option) *GoogleAI {
 	// Create httprr with API key transport wrapper
 	// This is necessary because the Google API library doesn't add the API key
 	// when a custom HTTP client is provided via WithHTTPClient
+	// Replay sends the placeholder key that recording scrubs the real one to.
 	apiKey := os.Getenv("GOOGLE_API_KEY")
 	if apiKey == "" {
-		// Replaying: recordings scrub the key to this placeholder.
 		apiKey = "test-api-key"
 	}
 	transport := &httputil.ApiKeyTransport{
@@ -60,16 +77,17 @@ func newHTTPRRClient(t *testing.T, opts ...Option) *GoogleAI {
 		return nil
 	})
 
-	// Configure client with httprr
+	rr.ScrubReq(compactJSONBody)
+
+	// Configure client with httprr. Passing the key keeps the client from
+	// looking for application default credentials during replay.
 	opts = append(opts, WithRest(), WithHTTPClient(rr.Client()), WithAPIKey(apiKey))
 
 	llm, err := New(context.Background(), opts...)
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -93,9 +111,7 @@ func TestGoogleAIGenerateContent(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -129,13 +145,11 @@ func TestGoogleAIGenerateContentWithMultipleMessages(t *testing.T) {
 		},
 	}
 
-	resp, err := llm.GenerateContent(context.Background(), content, llms.WithModel("gemini-1.5-flash"))
+	resp, err := llm.GenerateContent(context.Background(), content, llms.WithModel("gemini-2.5-flash"))
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -163,13 +177,11 @@ func TestGoogleAIGenerateContentWithSystemMessage(t *testing.T) {
 		},
 	}
 
-	resp, err := llm.GenerateContent(context.Background(), content, llms.WithModel("gemini-1.5-flash"))
+	resp, err := llm.GenerateContent(context.Background(), content, llms.WithModel("gemini-2.5-flash"))
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -185,9 +197,7 @@ func TestGoogleAICall(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -205,9 +215,7 @@ func TestGoogleAICreateEmbedding(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -222,7 +230,7 @@ func TestGoogleAICreateEmbedding(t *testing.T) {
 func TestGoogleAIWithOptions(t *testing.T) {
 
 	llm := newHTTPRRClient(t,
-		WithDefaultModel("gemini-1.5-flash"),
+		WithDefaultModel("gemini-2.5-flash"),
 		WithDefaultMaxTokens(100),
 		WithDefaultTemperature(0.1),
 	)
@@ -240,9 +248,7 @@ func TestGoogleAIWithOptions(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -276,9 +282,7 @@ func TestGoogleAIWithStreaming(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -337,9 +341,7 @@ func TestGoogleAIWithTools(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -376,9 +378,7 @@ func TestGoogleAIWithJSONMode(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -415,9 +415,7 @@ func TestGoogleAIErrorHandling(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -444,9 +442,7 @@ func TestGoogleAIMultiModalContent(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -464,15 +460,13 @@ func TestGoogleAIMultiModalContent(t *testing.T) {
 	resp, err := llm.GenerateContent(
 		context.Background(),
 		content,
-		llms.WithModel("gemini-1.5-flash"),
+		llms.WithModel("gemini-2.5-flash"),
 	)
 
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -495,9 +489,7 @@ func TestGoogleAIBatchEmbedding(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -526,9 +518,7 @@ func TestGoogleAIWithHarmThreshold(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -578,9 +568,7 @@ func TestGoogleAIToolCallResponse(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}
@@ -614,9 +602,7 @@ func TestGoogleAIToolCallResponse(t *testing.T) {
 		if err != nil {
 			// Check if this is a recording mismatch error
 			if strings.Contains(err.Error(), "cached HTTP response not found") {
-				t.Skip(
-					"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-				)
+				t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 			}
 			require.NoError(t, err)
 		}

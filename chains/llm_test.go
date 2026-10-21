@@ -95,9 +95,9 @@ func TestLLMChainWithGoogleAI(t *testing.T) {
 	// Create httprr with API key transport wrapper
 	// This is necessary because the Google API library doesn't add the API key
 	// when a custom HTTP client is provided via WithHTTPClient
+	// Replay sends the placeholder key that recording scrubs the real one to.
 	apiKey := os.Getenv("GOOGLE_API_KEY")
 	if apiKey == "" {
-		// Replaying: recordings scrub the key to this placeholder.
 		apiKey = "test-api-key"
 	}
 	transport := &httputil.ApiKeyTransport{
@@ -117,9 +117,9 @@ func TestLLMChainWithGoogleAI(t *testing.T) {
 		return nil
 	})
 
-	// Configure client with httprr
-	var opts []googleai.Option
-	opts = append(opts, googleai.WithRest(), googleai.WithHTTPClient(rr.Client()), googleai.WithAPIKey(apiKey))
+	// Configure client with httprr. Passing the key keeps the client from
+	// looking for application default credentials during replay.
+	opts := []googleai.Option{googleai.WithRest(), googleai.WithHTTPClient(rr.Client()), googleai.WithAPIKey(apiKey)}
 
 	model, err := googleai.New(ctx, opts...)
 	require.NoError(t, err)
@@ -143,9 +143,7 @@ func TestLLMChainWithGoogleAI(t *testing.T) {
 	if err != nil {
 		// Check if this is a recording mismatch error
 		if strings.Contains(err.Error(), "cached HTTP response not found") {
-			t.Skip(
-				"Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions",
-			)
+			t.Skip("Recording format has changed or is incompatible. Hint: Re-run tests with -httprecord=. to record new HTTP interactions")
 		}
 		require.NoError(t, err)
 	}

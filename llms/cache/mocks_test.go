@@ -27,11 +27,7 @@ func (m *mockLLM) Call(ctx context.Context, prompt string, options ...llms.CallO
 	return llms.GenerateFromSinglePrompt(ctx, m, prompt, options...)
 }
 
-func (m *mockLLM) GenerateContent(
-	ctx context.Context,
-	_ []llms.MessageContent,
-	options ...llms.CallOption,
-) (*llms.ContentResponse, error) {
+func (m *mockLLM) GenerateContent(ctx context.Context, _ []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
 	var opts llms.CallOptions
 	for _, opt := range options {
 		opt(&opts)

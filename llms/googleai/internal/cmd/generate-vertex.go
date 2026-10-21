@@ -89,8 +89,7 @@ func removeTokenCount(fun *ast.FuncDecl) {
 			for i, stmt := range block.List {
 				if assign, ok := stmt.(*ast.AssignStmt); ok {
 					lhs0 := assign.Lhs[0]
-					if lhs, ok := lhs0.(*ast.SelectorExpr); ok && getIdentName(lhs.Sel) == "TokenCount" &&
-						getIdentName(lhs.X) == "candidate" {
+					if lhs, ok := lhs0.(*ast.SelectorExpr); ok && getIdentName(lhs.Sel) == "TokenCount" && getIdentName(lhs.X) == "candidate" {
 						idx = i
 						break
 					}

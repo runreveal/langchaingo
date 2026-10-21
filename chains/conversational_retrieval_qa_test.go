@@ -15,10 +15,7 @@ import (
 
 type testConversationalRetriever struct{}
 
-func (t testConversationalRetriever) GetRelevantDocuments(
-	_ context.Context,
-	query string,
-) ([]schema.Document, error) { // nolint: lll
+func (t testConversationalRetriever) GetRelevantDocuments(_ context.Context, query string) ([]schema.Document, error) { // nolint: lll
 	if query == "What did the president say about Ketanji Brown Jackson" {
 		return []schema.Document{
 			// nolint: lll
