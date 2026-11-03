@@ -338,7 +338,11 @@ func TestProcessInputMessagesAnthropic(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedMsgs, len(msgs))
-				require.Equal(t, tt.expectedSystem, system)
+				var gotSystem string
+				if system != nil {
+					gotSystem = system.Text
+				}
+				require.Equal(t, tt.expectedSystem, gotSystem)
 			}
 		})
 	}
@@ -672,10 +676,7 @@ func TestAnthropicResponseParsing(t *testing.T) {
 		},
 		StopReason:   AnthropicCompletionReasonEndTurn,
 		StopSequence: "",
-		Usage: struct {
-			InputTokens  int `json:"input_tokens"`
-			OutputTokens int `json:"output_tokens"`
-		}{
+		Usage: anthropicUsage{
 			InputTokens:  10,
 			OutputTokens: 15,
 		},
@@ -738,26 +739,20 @@ func TestAnthropicStreamingResponseChunk(t *testing.T) {
 			chunk: streamingCompletionResponseChunk{
 				Type: "message_start",
 				Message: struct {
-					ID           string `json:"id"`
-					Type         string `json:"type"`
-					Role         string `json:"role"`
-					Content      []any  `json:"content"`
-					Model        string `json:"model"`
-					StopReason   any    `json:"stop_reason"`
-					StopSequence any    `json:"stop_sequence"`
-					Usage        struct {
-						InputTokens  int `json:"input_tokens"`
-						OutputTokens int `json:"output_tokens"`
-					} `json:"usage"`
+					ID           string         `json:"id"`
+					Type         string         `json:"type"`
+					Role         string         `json:"role"`
+					Content      []any          `json:"content"`
+					Model        string         `json:"model"`
+					StopReason   any            `json:"stop_reason"`
+					StopSequence any            `json:"stop_sequence"`
+					Usage        anthropicUsage `json:"usage"`
 				}{
 					ID:    "msg-123",
 					Type:  "message",
 					Role:  "assistant",
 					Model: "claude-3",
-					Usage: struct {
-						InputTokens  int `json:"input_tokens"`
-						OutputTokens int `json:"output_tokens"`
-					}{
+					Usage: anthropicUsage{
 						InputTokens: 25,
 					},
 				},
