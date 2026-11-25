@@ -229,6 +229,11 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 			return nil, fmt.Errorf("role %v not supported", mc.Role)
 		}
 
+		// Reasoning is read before ExtractToolParts drops the thinking parts.
+		if mc.Role == llms.ChatMessageTypeAI {
+			setReasoning(msg, reasoningFromParts(mc.Parts), reasoningFieldOption(&opts))
+		}
+
 		// Here we extract tool calls from the message and populate the ToolCalls field.
 		newParts, toolCalls := ExtractToolParts(msg)
 		msg.MultiContent = newParts
@@ -349,9 +354,10 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 
 	choices := make([]*llms.ContentChoice, len(result.Choices))
 	for i, c := range result.Choices {
+		reasoning, reasoningField := messageReasoning(c.Message)
 		choices[i] = &llms.ContentChoice{
 			Content:          c.Message.Content,
-			ReasoningContent: c.Message.ReasoningContent,
+			ReasoningContent: reasoning,
 			StopReason:       fmt.Sprint(c.FinishReason),
 			GenerationInfo: map[string]any{
 				"CompletionTokens":  result.Usage.CompletionTokens,
@@ -360,7 +366,7 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 				"ReasoningTokens":   result.Usage.CompletionTokensDetails.ReasoningTokens,
 				"PromptAudioTokens": result.Usage.PromptTokensDetails.AudioTokens,
 				// Standardized fields for cross-provider compatibility
-				"ThinkingContent":                    c.Message.ReasoningContent,                           // Standardized field
+				"ThinkingContent":                    reasoning,                                            // Standardized field
 				"ThinkingTokens":                     result.Usage.CompletionTokensDetails.ReasoningTokens, // Standardized field
 				"PromptCachedTokens":                 result.Usage.PromptTokensDetails.CachedTokens,
 				"CompletionAudioTokens":              result.Usage.CompletionTokensDetails.AudioTokens,
@@ -368,6 +374,9 @@ func (o *LLM) GenerateContent(ctx context.Context, messages []llms.MessageConten
 				"CompletionAcceptedPredictionTokens": result.Usage.CompletionTokensDetails.AcceptedPredictionTokens,
 				"CompletionRejectedPredictionTokens": result.Usage.CompletionTokensDetails.RejectedPredictionTokens,
 			},
+		}
+		if reasoningField != "" {
+			choices[i].GenerationInfo[GenInfoReasoningField] = reasoningField
 		}
 
 		// Legacy function call handling
@@ -477,6 +486,38 @@ func ExtractToolParts(msg *ChatMessage) ([]llms.ContentPart, []llms.ToolCall) {
 		}
 	}
 	return content, toolCalls
+}
+
+// messageReasoning returns the reasoning of a response message and the name of
+// the field the provider put it in. The field is empty when there is none.
+func messageReasoning(msg ChatMessage) (reasoning, field string) {
+	switch {
+	case msg.ReasoningContent != "":
+		return msg.ReasoningContent, ReasoningFieldReasoningContent
+	case msg.Reasoning != "":
+		return msg.Reasoning, ReasoningFieldReasoning
+	}
+	return "", ""
+}
+
+// reasoningFromParts returns the text of a message's thinking parts, in order.
+func reasoningFromParts(parts []llms.ContentPart) string {
+	var sb strings.Builder
+	for _, part := range parts {
+		if p, ok := part.(llms.ThinkingContent); ok {
+			sb.WriteString(p.Thinking)
+		}
+	}
+	return sb.String()
+}
+
+// setReasoning puts replayed reasoning on a request message under field.
+func setReasoning(msg *ChatMessage, reasoning, field string) {
+	if field == ReasoningFieldReasoning {
+		msg.Reasoning = reasoning
+		return
+	}
+	msg.ReasoningContent = reasoning
 }
 
 // toolFromTool converts an llms.Tool to a Tool.

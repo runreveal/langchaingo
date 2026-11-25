@@ -58,6 +58,42 @@ func TestParseStreamingChatResponse_ReasoningContent(t *testing.T) {
 	assert.Equal(t, FinishReason("stop"), resp.Choices[0].FinishReason)
 }
 
+// vLLM and the servers built on it name the field reasoning rather than
+// reasoning_content. It is kept apart so it can be sent back under its own name.
+func TestParseStreamingChatResponse_Reasoning(t *testing.T) {
+	ctx := context.Background()
+	t.Parallel()
+	mockBody := `
+data: {"choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+
+data: {"choices":[{"index":0,"delta":{"reasoning":"step-by-step "},"finish_reason":null}]}
+
+data: {"choices":[{"index":0,"delta":{"reasoning":"reasoning"},"finish_reason":null}]}
+
+data: {"choices":[{"index":0,"delta":{"content":"final answer"},"finish_reason":"stop"}]}
+`
+	r := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewBufferString(mockBody)),
+	}
+
+	var streamed string
+	req := &ChatRequest{
+		StreamingReasoningFunc: func(_ context.Context, reasoningChunk, _ []byte) error {
+			streamed += string(reasoningChunk)
+			return nil
+		},
+	}
+
+	resp, err := parseStreamingChatResponse(ctx, r, req)
+
+	require.NoError(t, err)
+	assert.Equal(t, "final answer", resp.Choices[0].Message.Content)
+	assert.Equal(t, "step-by-step reasoning", resp.Choices[0].Message.Reasoning)
+	assert.Empty(t, resp.Choices[0].Message.ReasoningContent)
+	assert.Equal(t, "step-by-step reasoning", streamed)
+}
+
 func TestParseStreamingChatResponse_ReasoningFunc(t *testing.T) {
 	ctx := context.Background()
 	t.Parallel()
@@ -116,6 +152,23 @@ func TestChatMessage_MarshalUnmarshal_WithReasoning(t *testing.T) {
 	text, err := json.Marshal(msg)
 	require.NoError(t, err)
 	require.Equal(t, `{"role":"assistant","content":"final answer","reasoning_content":"step-by-step reasoning"}`, string(text))
+
+	var msg2 ChatMessage
+	err = json.Unmarshal(text, &msg2)
+	require.NoError(t, err)
+	require.Equal(t, msg, msg2)
+}
+
+func TestChatMessage_MarshalUnmarshal_WithReasoningField(t *testing.T) {
+	t.Parallel()
+	msg := ChatMessage{
+		Role:      "assistant",
+		Content:   "final answer",
+		Reasoning: "step-by-step reasoning",
+	}
+	text, err := json.Marshal(msg)
+	require.NoError(t, err)
+	require.Equal(t, `{"role":"assistant","content":"final answer","reasoning":"step-by-step reasoning"}`, string(text))
 
 	var msg2 ChatMessage
 	err = json.Unmarshal(text, &msg2)

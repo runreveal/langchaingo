@@ -345,6 +345,11 @@ type ChatMessage struct { //nolint:musttag
 
 	// This field is only used with the deepseek-reasoner model and represents the reasoning contents of the assistant message before the final answer.
 	ReasoningContent string `json:"reasoning_content,omitempty"`
+
+	// Reasoning is the same reasoning under the name vLLM and the servers built
+	// on it use. vLLM reads replayed reasoning only from this field, so the two
+	// are kept apart rather than folded into one.
+	Reasoning string `json:"reasoning,omitempty"`
 }
 
 func (m ChatMessage) MarshalJSON() ([]byte, error) {
@@ -372,6 +377,7 @@ func (m ChatMessage) MarshalJSON() ([]byte, error) {
 
 			// This field is only used with the deepseek-reasoner model and represents the reasoning contents of the assistant message before the final answer.
 			ReasoningContent string `json:"reasoning_content,omitempty"`
+			Reasoning        string `json:"reasoning,omitempty"`
 		}(m)
 		return json.Marshal(msg)
 	}
@@ -390,6 +396,7 @@ func (m ChatMessage) MarshalJSON() ([]byte, error) {
 
 		// This field is only used with the deepseek-reasoner model and represents the reasoning contents of the assistant message before the final answer.
 		ReasoningContent string `json:"reasoning_content,omitempty"`
+		Reasoning        string `json:"reasoning,omitempty"`
 	}(m)
 	return json.Marshal(msg)
 }
@@ -418,6 +425,7 @@ func (m *ChatMessage) UnmarshalJSON(data []byte) error {
 
 		// This field is only used with the deepseek-reasoner model and represents the reasoning contents of the assistant message before the final answer.
 		ReasoningContent string `json:"reasoning_content,omitempty"`
+		Reasoning        string `json:"reasoning,omitempty"`
 	}{}
 	err := json.Unmarshal(data, &msg)
 	if err != nil {
@@ -535,6 +543,8 @@ type StreamedChatResponsePayload struct {
 			ToolCalls []*ToolCall `json:"tool_calls,omitempty"`
 			// This field is only used with the deepseek-reasoner model and represents the reasoning contents of the assistant message before the final answer.
 			ReasoningContent string `json:"reasoning_content,omitempty"`
+			// Reasoning is the same reasoning under the name vLLM uses.
+			Reasoning string `json:"reasoning,omitempty"`
 		} `json:"delta,omitempty"`
 		FinishReason FinishReason `json:"finish_reason,omitempty"`
 	} `json:"choices,omitempty"`
@@ -755,9 +765,13 @@ func combineStreamingChatResponse(
 		choice := streamResponse.Choices[0]
 		chunk := []byte(choice.Delta.Content)
 		reasoningChunk := []byte(choice.Delta.ReasoningContent) // TODO: not sure if there will be any reasoning related to function call later, so just pass it here
+		if len(reasoningChunk) == 0 {
+			reasoningChunk = []byte(choice.Delta.Reasoning)
+		}
 		response.Choices[0].Message.Content += choice.Delta.Content
 		response.Choices[0].FinishReason = choice.FinishReason
 		response.Choices[0].Message.ReasoningContent += choice.Delta.ReasoningContent
+		response.Choices[0].Message.Reasoning += choice.Delta.Reasoning
 
 		if choice.Delta.FunctionCall != nil {
 			chunk = updateFunctionCall(response.Choices[0].Message, choice.Delta.FunctionCall)
