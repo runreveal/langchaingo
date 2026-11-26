@@ -51,6 +51,25 @@ const (
 	metaReasoningItems   = "openai:reasoning_items"
 )
 
+// metaReasoningField carries WithReasoningField, a chat-completions setting. It
+// is stripped before the request is sent, like the keys above.
+const metaReasoningField = "openai:reasoning_field"
+
+// The names OpenAI-compatible chat-completions servers give the reasoning of an
+// assistant message. Neither is part of the OpenAI API.
+const (
+	// ReasoningFieldReasoningContent is used by DeepSeek, Z.AI and others.
+	ReasoningFieldReasoningContent = "reasoning_content"
+	// ReasoningFieldReasoning is used by vLLM and the servers built on it.
+	ReasoningFieldReasoning = "reasoning"
+)
+
+// GenInfoReasoningField is the GenerationInfo key naming the field a
+// chat-completions provider returned its reasoning in. It is set only when the
+// response carried reasoning. Pass the value to WithReasoningField on later
+// calls so replayed reasoning goes back under the same name.
+const GenInfoReasoningField = "ReasoningField"
+
 // apiFlavor selects which OpenAI endpoint serves a generation.
 type apiFlavor string
 
@@ -114,6 +133,19 @@ func WithPriorReasoningItems(items []json.RawMessage) llms.CallOption {
 	return func(opts *llms.CallOptions) { setMeta(opts, metaReasoningItems, items) }
 }
 
+// WithReasoningField names the field that carries the reasoning of replayed
+// assistant messages, which are the llms.ThinkingContent parts of AI messages.
+// Models that reason between tool calls expect the reasoning that led to a tool
+// call to come back with it, in the field the server reads: vLLM reads
+// reasoning and ignores reasoning_content.
+//
+// Pass the value the provider left in GenerationInfo[GenInfoReasoningField].
+// Without it, or with a name that is not one of the ReasoningField constants,
+// reasoning is sent as reasoning_content. Chat completions only.
+func WithReasoningField(field string) llms.CallOption {
+	return func(opts *llms.CallOptions) { setMeta(opts, metaReasoningField, field) }
+}
+
 func flavorOption(opts *llms.CallOptions) apiFlavor {
 	f, _ := opts.Metadata[metaAPIFlavor].(apiFlavor)
 	return f
@@ -126,6 +158,11 @@ func reasoningEffortOption(opts *llms.CallOptions) string {
 
 func reasoningSummaryOption(opts *llms.CallOptions) string {
 	s, _ := opts.Metadata[metaReasoningSummary].(string)
+	return s
+}
+
+func reasoningFieldOption(opts *llms.CallOptions) string {
+	s, _ := opts.Metadata[metaReasoningField].(string)
 	return s
 }
 
